@@ -1,0 +1,125 @@
+[gd_scene format=3 uid="uid://bbeqaiq6o7xkm"]
+
+[ext_resource type="Script" uid="uid://kt4sp7ngmjty" path="res://scripts/camera_switch.gd" id="1_85g3d"]
+[ext_resource type="PackedScene" uid="uid://dmpm1ftm5y3p0" path="res://resources/mesa.glb" id="1_o6xl0"]
+[ext_resource type="PackedScene" uid="uid://bkmve3yrlxh6u" path="res://resources/cartas.glb" id="2_tipki"]
+[ext_resource type="PackedScene" uid="uid://juptvgiunj1a" path="res://resources/dice.glb" id="3_85g3d"]
+[ext_resource type="Shader" uid="uid://dobohlml8x6h" path="res://resources/sky.gdshader" id="4_choun"]
+[ext_resource type="PackedScene" uid="uid://cvg55irvndj1e" path="res://resources/fichaazul.glb" id="5_ya4ey"]
+[ext_resource type="PackedScene" uid="uid://biwd0p1tkioa6" path="res://resources/fichaverde.glb" id="6_eb6dy"]
+[ext_resource type="PackedScene" uid="uid://bj2wcpot22ojb" path="res://resources/fichaamarilla.glb" id="7_trceg"]
+[ext_resource type="PackedScene" uid="uid://br7610qdat6wm" path="res://resources/ficharoja.glb" id="8_tipki"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_a8y0u"]
+shader = ExtResource("4_choun")
+shader_parameter/background_dark = false
+
+[sub_resource type="Sky" id="Sky_jkv2x"]
+sky_material = SubResource("ShaderMaterial_a8y0u")
+
+[sub_resource type="Environment" id="Environment_jbj1t"]
+background_mode = 2
+sky = SubResource("Sky_jkv2x")
+
+[node name="Node3D" type="Node3D" unique_id=1105050211]
+script = ExtResource("1_85g3d")
+
+[node name="mesa" parent="." unique_id=2067530415 instance=ExtResource("1_o6xl0")]
+physics_interpolation_mode = 1
+transform = Transform3D(1, 0, 0, 0, 0.9532118, 0.30230334, 0, -0.30230334, 0.9532118, 0.096046075, 0.2822532, 0.7166215)
+
+[node name="cartas" parent="." unique_id=936733404 instance=ExtResource("2_tipki")]
+transform = Transform3D(0.015, 0, 0, 0, 0.015, 0, 0, 0, 0.015, 0.31583074, 0.039057672, 0.059026778)
+
+[node name="dados" parent="." unique_id=1893449799 instance=ExtResource("3_85g3d")]
+transform = Transform3D(0.005, 0, 0, 0, 0.005, 0, 0, 0, 0.005, -0.08904771, 0.038655106, -0.0062501132)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=553287702]
+environment = SubResource("Environment_jbj1t")
+
+[node name="fichaazul" parent="." unique_id=156921876 instance=ExtResource("5_ya4ey")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.18606126, 0.050213106, -0.09469296)
+
+[node name="fichaverde" parent="." unique_id=1677175590 instance=ExtResource("6_eb6dy")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, -0.017955547, 0.054744005, 0.10962652)
+
+[node name="fichaamarilla" parent="." unique_id=1385282898 instance=ExtResource("7_trceg")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.16442151, 0.05103065, 0.08796224)
+
+[node name="fichaamarilla2" parent="." unique_id=1456489920 instance=ExtResource("7_trceg")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.18626687, 0.05103065, 0.08796224)
+
+[node name="fichaamarilla3" parent="." unique_id=1399261713 instance=ExtResource("7_trceg")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.18626687, 0.05103065, 0.10641469)
+
+[node name="fichaamarilla4" parent="." unique_id=1517196702 instance=ExtResource("7_trceg")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.16521426, 0.05103065, 0.10641469)
+
+[node name="fichaazul2" parent="." unique_id=1636765651 instance=ExtResource("5_ya4ey")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.18606126, 0.050213106, -0.116892025)
+
+[node name="fichaazul3" parent="." unique_id=1433905240 instance=ExtResource("5_ya4ey")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.16250385, 0.050213106, -0.09469296)
+
+[node name="fichaazul4" parent="." unique_id=1007456854 instance=ExtResource("5_ya4ey")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.16250385, 0.050213106, -0.11721311)
+
+[node name="fichaverde2" parent="." unique_id=2033957425 instance=ExtResource("6_eb6dy")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, -0.03504812, 0.054744005, 0.10962652)
+
+[node name="fichaverde3" parent="." unique_id=1876504937 instance=ExtResource("6_eb6dy")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, -0.03504812, 0.054744005, 0.091802515)
+
+[node name="fichaverde4" parent="." unique_id=1519143114 instance=ExtResource("6_eb6dy")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, -0.018029489, 0.054744005, 0.091802515)
+
+[node name="ficharoja" parent="." unique_id=441363024 instance=ExtResource("8_tipki")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, -0.02187924, 0.05175921, -0.11512298)
+
+[node name="ficharoja2" parent="." unique_id=1644023686 instance=ExtResource("8_tipki")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, -0.02187924, 0.05175921, -0.09340284)
+
+[node name="ficharoja3" parent="." unique_id=1083421340 instance=ExtResource("8_tipki")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, -0.043224536, 0.05175921, -0.09340284)
+
+[node name="ficharoja4" parent="." unique_id=4394501 instance=ExtResource("8_tipki")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, -0.043224536, 0.05175921, -0.11713031)
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=62830574]
+transform = Transform3D(-0.7149801, 0.08116829, -0.69441724, -0.06595047, 0.980979, 0.182567, 0.6960274, 0.1763289, -0.6960274, -0.08390592, 0.14599605, -0.19296317)
+
+[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=512031805]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.066325255, 0.55835825, -0.55081624)
+light_color = Color(0.981131, 0.859064, 0.97733206, 1)
+light_energy = 0.4
+distance_fade_enabled = true
+
+[node name="Camera3D2" type="Camera3D" parent="." unique_id=349992335]
+transform = Transform3D(0.69602746, 0.1763289, -0.69602734, -0.065950476, 0.98097914, 0.18256702, 0.7149801, -0.0811683, 0.69441724, -0.08390592, 0.14599605, 0.20777775)
+
+[node name="Camera3D3" type="Camera3D" parent="." unique_id=1013479194]
+transform = Transform3D(0.7149802, -0.08116827, 0.6944172, -0.065950476, 0.98097914, 0.18256702, -0.69602734, -0.17632893, 0.69602746, 0.29683867, 0.14599605, 0.20777775)
+
+[node name="Camera3D4" type="Camera3D" parent="." unique_id=206992794]
+transform = Transform3D(-0.69602734, -0.17632891, 0.6960274, -0.06595046, 0.980979, 0.18256702, -0.7149801, 0.08116831, -0.6944172, 0.29701856, 0.14599605, -0.19408527)
+
+[node name="Camera3D5" type="Camera3D" parent="." unique_id=1775190577]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0.11337499, 0.276167, 0)
+
+[node name="OmniLight3D2" type="OmniLight3D" parent="." unique_id=230955666]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.066325255, 0.55835825, 0.77867854)
+light_color = Color(0.981131, 0.859064, 0.97733206, 1)
+light_energy = 0.4
+distance_fade_enabled = true
+
+[node name="OmniLight3D3" type="OmniLight3D" parent="." unique_id=857622024]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6778622, 0.55835825, 0.0019293576)
+light_color = Color(0.981131, 0.859064, 0.97733206, 1)
+light_energy = 0.4
+distance_fade_enabled = true
+
+[node name="OmniLight3D4" type="OmniLight3D" parent="." unique_id=1945516112]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4531579, 0.55835825, 0.0019293576)
+light_color = Color(0.981131, 0.859064, 0.97733206, 1)
+light_energy = 0.4
+distance_fade_enabled = true
