@@ -5,10 +5,8 @@
 [ext_resource type="PackedScene" uid="uid://bkmve3yrlxh6u" path="res://resources/cartas.glb" id="2_tipki"]
 [ext_resource type="PackedScene" uid="uid://juptvgiunj1a" path="res://resources/dice.glb" id="3_85g3d"]
 [ext_resource type="Shader" uid="uid://dobohlml8x6h" path="res://resources/sky.gdshader" id="4_choun"]
-[ext_resource type="PackedScene" uid="uid://cvg55irvndj1e" path="res://resources/fichaazul.glb" id="5_ya4ey"]
-[ext_resource type="PackedScene" uid="uid://biwd0p1tkioa6" path="res://resources/fichaverde.glb" id="6_eb6dy"]
-[ext_resource type="PackedScene" uid="uid://bj2wcpot22ojb" path="res://resources/fichaamarilla.glb" id="7_trceg"]
-[ext_resource type="PackedScene" uid="uid://br7610qdat6wm" path="res://resources/ficharoja.glb" id="8_tipki"]
+[ext_resource type="PackedScene" uid="uid://dnqhcolvi4hb0" path="res://scenes/piece.tscn" id="6_o6xl0"]
+[ext_resource type="Script" uid="uid://do68b1uyq8w8f" path="res://scripts/base_game/board.gd" id="10_choun"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_a8y0u"]
 shader = ExtResource("4_choun")
@@ -26,100 +24,265 @@ script = ExtResource("1_85g3d")
 
 [node name="mesa" parent="." unique_id=2067530415 instance=ExtResource("1_o6xl0")]
 physics_interpolation_mode = 1
-transform = Transform3D(1, 0, 0, 0, 0.9532118, 0.30230334, 0, -0.30230334, 0.9532118, 0.096046075, 0.2822532, 0.7166215)
+transform = Transform3D(1, 0, 0, 0, 0.9532118, 0.30230334, 0, -0.30230334, 0.9532118, 0.005900249, 0.2822532, 0.7166215)
 
 [node name="cartas" parent="." unique_id=936733404 instance=ExtResource("2_tipki")]
-transform = Transform3D(0.015, 0, 0, 0, 0.015, 0, 0, 0, 0.015, 0.31583074, 0.039057672, 0.059026778)
+transform = Transform3D(0.015, 0, 0, 0, 0.015, 0, 0, 0, 0.015, 0.22568491, 0.039057672, 0.059026778)
 
 [node name="dados" parent="." unique_id=1893449799 instance=ExtResource("3_85g3d")]
-transform = Transform3D(0.005, 0, 0, 0, 0.005, 0, 0, 0, 0.005, -0.08904771, 0.038655106, -0.0062501132)
+transform = Transform3D(0.005, 0, 0, 0, 0.005, 0, 0, 0, 0.005, -0.17919353, 0.038655106, -0.0062501132)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=553287702]
 environment = SubResource("Environment_jbj1t")
 
-[node name="fichaazul" parent="." unique_id=156921876 instance=ExtResource("5_ya4ey")]
-transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.18606126, 0.050213106, -0.09469296)
-
-[node name="fichaverde" parent="." unique_id=1677175590 instance=ExtResource("6_eb6dy")]
-transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, -0.017955547, 0.054744005, 0.10962652)
-
-[node name="fichaamarilla" parent="." unique_id=1385282898 instance=ExtResource("7_trceg")]
-transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.16442151, 0.05103065, 0.08796224)
-
-[node name="fichaamarilla2" parent="." unique_id=1456489920 instance=ExtResource("7_trceg")]
-transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.18626687, 0.05103065, 0.08796224)
-
-[node name="fichaamarilla3" parent="." unique_id=1399261713 instance=ExtResource("7_trceg")]
-transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.18626687, 0.05103065, 0.10641469)
-
-[node name="fichaamarilla4" parent="." unique_id=1517196702 instance=ExtResource("7_trceg")]
-transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.16521426, 0.05103065, 0.10641469)
-
-[node name="fichaazul2" parent="." unique_id=1636765651 instance=ExtResource("5_ya4ey")]
-transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.18606126, 0.050213106, -0.116892025)
-
-[node name="fichaazul3" parent="." unique_id=1433905240 instance=ExtResource("5_ya4ey")]
-transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.16250385, 0.050213106, -0.09469296)
-
-[node name="fichaazul4" parent="." unique_id=1007456854 instance=ExtResource("5_ya4ey")]
-transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.16250385, 0.050213106, -0.11721311)
-
-[node name="fichaverde2" parent="." unique_id=2033957425 instance=ExtResource("6_eb6dy")]
-transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, -0.03504812, 0.054744005, 0.10962652)
-
-[node name="fichaverde3" parent="." unique_id=1876504937 instance=ExtResource("6_eb6dy")]
-transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, -0.03504812, 0.054744005, 0.091802515)
-
-[node name="fichaverde4" parent="." unique_id=1519143114 instance=ExtResource("6_eb6dy")]
-transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, -0.018029489, 0.054744005, 0.091802515)
-
-[node name="ficharoja" parent="." unique_id=441363024 instance=ExtResource("8_tipki")]
-transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, -0.02187924, 0.05175921, -0.11512298)
-
-[node name="ficharoja2" parent="." unique_id=1644023686 instance=ExtResource("8_tipki")]
-transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, -0.02187924, 0.05175921, -0.09340284)
-
-[node name="ficharoja3" parent="." unique_id=1083421340 instance=ExtResource("8_tipki")]
-transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, -0.043224536, 0.05175921, -0.09340284)
-
-[node name="ficharoja4" parent="." unique_id=4394501 instance=ExtResource("8_tipki")]
-transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, -0.043224536, 0.05175921, -0.11713031)
+[node name="Piece" parent="." unique_id=311938791 instance=ExtResource("6_o6xl0")]
+transform = Transform3D(0.07, 0, 0, 0, 0.07, 0, 0, 0, 0.07, 0.09622755, 0.04716795, 0.11560383)
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=62830574]
-transform = Transform3D(-0.7149801, 0.08116829, -0.69441724, -0.06595047, 0.980979, 0.182567, 0.6960274, 0.1763289, -0.6960274, -0.08390592, 0.14599605, -0.19296317)
+transform = Transform3D(-0.7149801, 0.08116829, -0.69441724, -0.06595047, 0.980979, 0.182567, 0.6960274, 0.1763289, -0.6960274, -0.17405175, 0.14599605, -0.19296317)
+
+[node name="Camera3D2" type="Camera3D" parent="." unique_id=349992335]
+transform = Transform3D(0.6960274, 0.1763289, -0.69602734, -0.06595047, 0.980979, 0.18256699, 0.71498007, -0.08116829, 0.69441724, -0.17405175, 0.14599605, 0.20777775)
+
+[node name="Camera3D3" type="Camera3D" parent="." unique_id=1013479194]
+transform = Transform3D(0.7149801, -0.08116827, 0.6944171, -0.06595047, 0.980979, 0.18256699, -0.6960273, -0.17632891, 0.6960274, 0.20669284, 0.14599605, 0.20777775)
+
+[node name="Camera3D4" type="Camera3D" parent="." unique_id=206992794]
+transform = Transform3D(-0.69602734, -0.17632891, 0.6960274, -0.06595046, 0.980979, 0.18256702, -0.7149801, 0.0811683, -0.6944172, 0.20687273, 0.14599605, -0.19408527)
+
+[node name="Camera3D5" type="Camera3D" parent="." unique_id=1775190577]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0.023229167, 0.276167, 0)
 
 [node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=512031805]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.066325255, 0.55835825, -0.55081624)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.023820572, 0.55835825, -0.55081624)
 light_color = Color(0.981131, 0.859064, 0.97733206, 1)
 light_energy = 0.4
 distance_fade_enabled = true
 
-[node name="Camera3D2" type="Camera3D" parent="." unique_id=349992335]
-transform = Transform3D(0.69602746, 0.1763289, -0.69602734, -0.065950476, 0.98097914, 0.18256702, 0.7149801, -0.0811683, 0.69441724, -0.08390592, 0.14599605, 0.20777775)
-
-[node name="Camera3D3" type="Camera3D" parent="." unique_id=1013479194]
-transform = Transform3D(0.7149802, -0.08116827, 0.6944172, -0.065950476, 0.98097914, 0.18256702, -0.69602734, -0.17632893, 0.69602746, 0.29683867, 0.14599605, 0.20777775)
-
-[node name="Camera3D4" type="Camera3D" parent="." unique_id=206992794]
-transform = Transform3D(-0.69602734, -0.17632891, 0.6960274, -0.06595046, 0.980979, 0.18256702, -0.7149801, 0.08116831, -0.6944172, 0.29701856, 0.14599605, -0.19408527)
-
-[node name="Camera3D5" type="Camera3D" parent="." unique_id=1775190577]
-transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0.11337499, 0.276167, 0)
-
 [node name="OmniLight3D2" type="OmniLight3D" parent="." unique_id=230955666]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.066325255, 0.55835825, 0.77867854)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.023820572, 0.55835825, 0.77867854)
 light_color = Color(0.981131, 0.859064, 0.97733206, 1)
 light_energy = 0.4
 distance_fade_enabled = true
 
 [node name="OmniLight3D3" type="OmniLight3D" parent="." unique_id=857622024]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6778622, 0.55835825, 0.0019293576)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5877164, 0.55835825, 0.0019293576)
 light_color = Color(0.981131, 0.859064, 0.97733206, 1)
 light_energy = 0.4
 distance_fade_enabled = true
 
 [node name="OmniLight3D4" type="OmniLight3D" parent="." unique_id=1945516112]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4531579, 0.55835825, 0.0019293576)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5433037, 0.55835825, 0.0019293576)
 light_color = Color(0.981131, 0.859064, 0.97733206, 1)
 light_energy = 0.4
 distance_fade_enabled = true
+
+[node name="Board" type="Node3D" parent="." unique_id=141135003]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.008337084, 0, 0.005864799)
+script = ExtResource("10_choun")
+
+[node name="Main_Path" type="Node3D" parent="Board" unique_id=1936763220]
+
+[node name="Square0" type="Marker3D" parent="Board/Main_Path" unique_id=92120490]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.04875866, 0.051027708, 0.082967736)
+
+[node name="Square1" type="Marker3D" parent="Board/Main_Path" unique_id=287103463]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.048446883, 0.051027708, 0.06859423)
+
+[node name="Square2" type="Marker3D" parent="Board/Main_Path" unique_id=742593773]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.048543397, 0.051027708, 0.05538793)
+
+[node name="Square3" type="Marker3D" parent="Board/Main_Path" unique_id=313821688]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.047998775, 0.051027708, 0.041293755)
+
+[node name="Square4" type="Marker3D" parent="Board/Main_Path" unique_id=1503519025]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.060576234, 0.051027708, 0.027555954)
+
+[node name="Square5" type="Marker3D" parent="Board/Main_Path" unique_id=1672938289]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.07471265, 0.051027708, 0.027089708)
+
+[node name="Square6" type="Marker3D" parent="Board/Main_Path" unique_id=594681079]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.089580685, 0.051027708, 0.02717007)
+
+[node name="Square7" type="Marker3D" parent="Board/Main_Path" unique_id=698654675]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.10392988, 0.051027708, 0.026263755)
+
+[node name="Square8" type="Marker3D" parent="Board/Main_Path" unique_id=1887261646]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.11901021, 0.051027708, 0.026431784)
+
+[node name="Square9" type="Marker3D" parent="Board/Main_Path" unique_id=1825233436]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.13293433, 0.051027708, 0.02587787)
+
+[node name="Square10" type="Marker3D" parent="Board/Main_Path" unique_id=2102303839]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1482978, 0.051027708, 0.027506404)
+
+[node name="Square11" type="Marker3D" parent="Board/Main_Path" unique_id=758371181]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.16222194, 0.051027708, 0.02695249)
+
+[node name="Square12" type="Marker3D" parent="Board/Main_Path" unique_id=95255281]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.16228178, 0.051027708, -0.0067486353)
+
+[node name="Square13" type="Marker3D" parent="Board/Main_Path" unique_id=352476845]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1614298, 0.051027708, -0.03959501)
+
+[node name="Square14" type="Marker3D" parent="Board/Main_Path" unique_id=2035170622]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.14821345, 0.051027708, -0.039521392)
+
+[node name="Square15" type="Marker3D" parent="Board/Main_Path" unique_id=1296581427]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1327664, 0.051027708, -0.03937823)
+
+[node name="Square16" type="Marker3D" parent="Board/Main_Path" unique_id=239563789]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.11955005, 0.051027708, -0.03930461)
+
+[node name="Square17" type="Marker3D" parent="Board/Main_Path" unique_id=1269781615]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.10322295, 0.051027708, -0.039116863)
+
+[node name="Square18" type="Marker3D" parent="Board/Main_Path" unique_id=372327122]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.090006605, 0.051027708, -0.039043244)
+
+[node name="Square19" type="Marker3D" parent="Board/Main_Path" unique_id=454607418]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.074559554, 0.051027708, -0.03890008)
+
+[node name="Square20" type="Marker3D" parent="Board/Main_Path" unique_id=384373480]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.06134321, 0.051027708, -0.038826462)
+
+[node name="Square21" type="Marker3D" parent="Board/Main_Path" unique_id=1835687908]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.050170664, 0.051027708, -0.05242451)
+
+[node name="Square22" type="Marker3D" parent="Board/Main_Path" unique_id=814160430]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.050295535, 0.051027708, -0.0669098)
+
+[node name="Square23" type="Marker3D" parent="Board/Main_Path" unique_id=1042824603]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.050501306, 0.051027708, -0.08034925)
+
+[node name="Square24" type="Marker3D" parent="Board/Main_Path" unique_id=1363875475]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.050682027, 0.051027708, -0.094982594)
+
+[node name="Square25" type="Marker3D" parent="Board/Main_Path" unique_id=2033917019]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.04997659, 0.051027708, -0.10971013)
+
+[node name="Square26" type="Marker3D" parent="Board/Main_Path" unique_id=1612845583]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.050101463, 0.051027708, -0.12419542)
+
+[node name="Square27" type="Marker3D" parent="Board/Main_Path" unique_id=1101234562]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.050307233, 0.051027708, -0.13763487)
+
+[node name="Square28" type="Marker3D" parent="Board/Main_Path" unique_id=1393779638]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.050498042, 0.051027708, -0.15332134)
+
+[node name="Square29" type="Marker3D" parent="Board/Main_Path" unique_id=1556731177]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.016192619, 0.051027708, -0.15380223)
+
+[node name="Square30" type="Marker3D" parent="Board/Main_Path" unique_id=632662820]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.016420256, 0.051027708, -0.15487051)
+
+[node name="Square31" type="Marker3D" parent="Board/Main_Path" unique_id=1620233719]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.016174208, 0.051027708, -0.13969254)
+
+[node name="Square32" type="Marker3D" parent="Board/Main_Path" unique_id=2102096704]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01665875, 0.051027708, -0.1252029)
+
+[node name="Square33" type="Marker3D" parent="Board/Main_Path" unique_id=835629133]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.016412701, 0.051027708, -0.110024944)
+
+[node name="Square34" type="Marker3D" parent="Board/Main_Path" unique_id=1827852950]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.016570415, 0.051027708, -0.095201574)
+
+[node name="Square35" type="Marker3D" parent="Board/Main_Path" unique_id=501379760]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.016324367, 0.051027708, -0.080023624)
+
+[node name="Square36" type="Marker3D" parent="Board/Main_Path" unique_id=1588171161]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.016808908, 0.051027708, -0.065533966)
+
+[node name="Square37" type="Marker3D" parent="Board/Main_Path" unique_id=2051787940]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.016899731, 0.051027708, -0.051160682)
+
+[node name="Square38" type="Marker3D" parent="Board/Main_Path" unique_id=883166252]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.03168339, 0.051027708, -0.038987294)
+
+[node name="Square39" type="Marker3D" parent="Board/Main_Path" unique_id=731038690]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.04542688, 0.051027708, -0.03925146)
+
+[node name="Square40" type="Marker3D" parent="Board/Main_Path" unique_id=531625358]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.06037571, 0.051027708, -0.039618596)
+
+[node name="Square41" type="Marker3D" parent="Board/Main_Path" unique_id=1584003765]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.074119195, 0.051027708, -0.039882764)
+
+[node name="Square42" type="Marker3D" parent="Board/Main_Path" unique_id=2116524381]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.08733755, 0.051027708, -0.04044444)
+
+[node name="Square43" type="Marker3D" parent="Board/Main_Path" unique_id=1628996003]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.10108104, 0.051027708, -0.04070861)
+
+[node name="Square44" type="Marker3D" parent="Board/Main_Path" unique_id=338094273]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.11946848, 0.051027708, -0.041217767)
+
+[node name="Square45" type="Marker3D" parent="Board/Main_Path" unique_id=733225033]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13083202, 0.05005548, -0.04038923)
+
+[node name="Square46" type="Marker3D" parent="Board/Main_Path" unique_id=1512295438]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13186188, 0.051027708, -0.007953487)
+
+[node name="Square47" type="Marker3D" parent="Board/Main_Path" unique_id=2113397452]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13201284, 0.0510277, 0.02750789)
+
+[node name="Square48" type="Marker3D" parent="Board/Main_Path" unique_id=1151721934]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.1166078, 0.0510277, 0.027566787)
+
+[node name="Square49" type="Marker3D" parent="Board/Main_Path" unique_id=1914810250]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.10319123, 0.0510277, 0.027390089)
+
+[node name="Square50" type="Marker3D" parent="Board/Main_Path" unique_id=608286702]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.08778617, 0.0510277, 0.027448986)
+
+[node name="Square51" type="Marker3D" parent="Board/Main_Path" unique_id=1313361725]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.07286285, 0.0510277, 0.027185448)
+
+[node name="Square52" type="Marker3D" parent="Board/Main_Path" unique_id=173656383]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.057457794, 0.0510277, 0.027244344)
+
+[node name="Square53" type="Marker3D" parent="Board/Main_Path" unique_id=58326612]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.04404122, 0.0510277, 0.027067646)
+
+[node name="Square54" type="Marker3D" parent="Board/Main_Path" unique_id=146541938]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.028636169, 0.0510277, 0.027126543)
+
+[node name="Square55" type="Marker3D" parent="Board/Main_Path" unique_id=83764850]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01714706, 0.051027685, 0.03469141)
+
+[node name="Square56" type="Marker3D" parent="Board/Main_Path" unique_id=1811173949]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.016655441, 0.051027685, 0.05221711)
+
+[node name="Square57" type="Marker3D" parent="Board/Main_Path" unique_id=1318370006]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.016486984, 0.051027685, 0.065233275)
+
+[node name="Square58" type="Marker3D" parent="Board/Main_Path" unique_id=1420826307]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01661281, 0.051027685, 0.080552466)
+
+[node name="Square59" type="Marker3D" parent="Board/Main_Path" unique_id=1220566257]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01665255, 0.0510277, 0.09560484)
+
+[node name="Square60" type="Marker3D" parent="Board/Main_Path" unique_id=1980047473]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.016160931, 0.0510277, 0.11313054)
+
+[node name="Square61" type="Marker3D" parent="Board/Main_Path" unique_id=478981544]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.015992474, 0.0510277, 0.1261467)
+
+[node name="Square62" type="Marker3D" parent="Board/Main_Path" unique_id=1502214368]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0161183, 0.0510277, 0.1414659)
+
+[node name="Square63" type="Marker3D" parent="Board/Main_Path" unique_id=1703420725]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.016148511, 0.0510277, 0.14197387)
+
+[node name="Square64" type="Marker3D" parent="Board/Main_Path" unique_id=6475304]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.048293028, 0.0510277, 0.14110783)
+
+[node name="Square65" type="Marker3D" parent="Board/Main_Path" unique_id=631443165]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.04907458, 0.051027693, 0.12680165)
+
+[node name="Square66" type="Marker3D" parent="Board/Main_Path" unique_id=2039422081]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.047788043, 0.0510277, 0.113007955)
+
+[node name="Square67" type="Marker3D" parent="Board/Main_Path" unique_id=919709622]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.048569594, 0.051027693, 0.09870178)
