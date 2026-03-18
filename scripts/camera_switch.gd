@@ -1,6 +1,6 @@
 extends Node3D
 
-@onready var cameras = [$"Camera3D6" ,$Camera3D, $Camera3D2, $Camera3D3, $Camera3D4, $Camera3D5 ]
+@onready var cameras = [$Camera3D, $Camera3D2, $Camera3D3, $Camera3D4, $Camera3D5 ]
 var index = 0
 
 func _input(event):
