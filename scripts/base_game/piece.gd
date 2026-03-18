@@ -3,6 +3,7 @@ extends Node3D
 var piece_id: int = 0 
 var route: int = 0
 var start_index: int = 0
+var current_position
 var board = null
 var in_jail = true
 var color: String
@@ -16,8 +17,8 @@ func _ready():
 
 func move(steps):
 	route += steps
-	var path_index = (route + start_index) % board.main_path.size()
-	var square = board.main_path[path_index]
+	current_position = (route + start_index) % board.main_path.size()
+	var square = board.main_path[current_position]
 	print(square.global_position)
 	global_position = square.global_position
 

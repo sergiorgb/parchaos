@@ -4,6 +4,8 @@ var main_path = []
 var piece
 var jail = {}
 
+const SAFE_SQUARES = [7, 12, 24, 29, 41, 46, 58, 63]
+
 func _ready():
 	for node in $Main_Path.get_children():
 		main_path.append(node)
