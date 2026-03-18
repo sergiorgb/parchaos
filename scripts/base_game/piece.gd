@@ -1,17 +1,18 @@
 extends Node3D
 
-var route = 0
-var start_index = 0
+var piece_id: int = 0 
+var route: int = 0
+var start_index: int = 0
 var board = null
-
-var color: String = "amarilla"
+var in_jail = true
+var color: String
 
 func _ready():
-	$Visual/fichaamarilla.visible = false
-	$Visual/ficharoja.visible = false
-	$Visual/fichaverde.visible = false
-	$Visual/fichaazul.visible = false
-	get_node("Visual/ficha" + color).visible = true
+	$Visual/yellow.visible = false
+	$Visual/blue.visible = false
+	$Visual/red.visible = false
+	$Visual/green.visible = false
+	get_node("Visual/" + color).visible = true
 
 func move(steps):
 	route += steps
@@ -19,3 +20,13 @@ func move(steps):
 	var square = board.main_path[path_index]
 	print(square.global_position)
 	global_position = square.global_position
+
+func go_to_jail():
+	in_jail = true
+	var spot = board.jail[color][piece_id]
+	global_position = spot.global_position
+
+func leave_jail():
+	in_jail = false
+	route = 0
+	move(0)

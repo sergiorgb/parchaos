@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cr07kk1t6vnkv"]
 
 [ext_resource type="PackedScene" uid="uid://dmpm1ftm5y3p0" path="res://resources/mesa.glb" id="1_bw3vb"]
-[ext_resource type="Script" uid="uid://do68b1uyq8w8f" path="res://scripts/base_game/board.gd" id="1_tx6nw"]
+[ext_resource type="Script" uid="uid://do68b1uyq8w8f" path="res://scripts/base_game/Board.gd" id="1_tx6nw"]
 
 [node name="Board" type="Node3D" unique_id=1352643309]
 script = ExtResource("1_tx6nw")
@@ -13,6 +13,7 @@ transform = Transform3D(5, 0, 0, 0, 4.727593, 1.6278408, 0, -1.6278408, 4.727593
 
 [node name="Main_Path" type="Node3D" parent="." unique_id=531020007]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0)
+visible = false
 
 [node name="Square0" type="Marker3D" parent="Main_Path" unique_id=1346861962]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0340312, 0.00465613, 0.088246934)
@@ -217,3 +218,54 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.03355656, 0.00465613, 0.118
 
 [node name="Square67" type="Marker3D" parent="Main_Path" unique_id=1440162583]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.033858895, 0.00465613, 0.10325178)
+
+[node name="Home" type="Node3D" parent="." unique_id=1647134460]
+visible = false
+
+[node name="Yellow 1" type="Marker3D" parent="Home" unique_id=784790799]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.43798995, 0.02328065, 0.43948886)
+
+[node name="Yellow 2" type="Marker3D" parent="Home" unique_id=1717659165]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.589131, 0.02328065, 0.43948886)
+
+[node name="Yellow 3" type="Marker3D" parent="Home" unique_id=262791263]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.43798983, 0.02328065, 0.59063005)
+
+[node name="Yellow 4" type="Marker3D" parent="Home" unique_id=602003685]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.589131, 0.02328065, 0.59063005)
+
+[node name="Blue 1" type="Marker3D" parent="Home" unique_id=1734987412]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.44038916, 0.02328065, -0.58731127)
+
+[node name="Blue 2" type="Marker3D" parent="Home" unique_id=1705883530]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.5915302, 0.02328065, -0.58731127)
+
+[node name="Blue 3" type="Marker3D" parent="Home" unique_id=1358109841]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.44038904, 0.02328065, -0.4361701)
+
+[node name="Blue 4" type="Marker3D" parent="Home" unique_id=650425336]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.5915302, 0.02328065, -0.4361701)
+
+[node name="Red 1" type="Marker3D" parent="Home" unique_id=296633605]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.58161294, 0.02328065, -0.58731127)
+
+[node name="Red 2" type="Marker3D" parent="Home" unique_id=1634407965]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.4304719, 0.02328065, -0.58731127)
+
+[node name="Red 3" type="Marker3D" parent="Home" unique_id=1908875255]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.58161306, 0.02328065, -0.4361701)
+
+[node name="Red 4" type="Marker3D" parent="Home" unique_id=1532098686]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.4304719, 0.02328065, -0.4361701)
+
+[node name="Green 1" type="Marker3D" parent="Home" unique_id=242041013]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.58401215, 0.02328065, 0.43948886)
+
+[node name="Green 2" type="Marker3D" parent="Home" unique_id=2127101638]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.4328711, 0.02328065, 0.43948886)
+
+[node name="Green 3" type="Marker3D" parent="Home" unique_id=737169319]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.58401227, 0.02328065, 0.59063005)
+
+[node name="Green 4" type="Marker3D" parent="Home" unique_id=28876921]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.4328711, 0.02328065, 0.59063005)
