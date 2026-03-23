@@ -22,3 +22,4 @@ transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.04, 0)
 
 [node name="green" parent="Visual" unique_id=1707075601 instance=ExtResource("2_al1la")]
 transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.04, 0)
+visible = false
