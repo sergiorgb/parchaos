@@ -32,10 +32,11 @@ func _ready():
 
 func _setup_players():
 	for data in PLAYER_DATA:
-		var player = Node.new()
-		player.set_script(load("res://scripts/base_game/Player.gd"))
-		player.setup(data.id, data.color, data.start_index, data.home_entry)
+		var player = Player.new()
 		add_child(player)
+		
+		player.setup(data.id, data.color, data.start_index, data.home_entry)
+		
 		players.append(player)
 		_spawn_pieces(player)
 
@@ -47,136 +48,100 @@ func _spawn_pieces(player):
 		piece.board = board
 		piece.color = player.color
 		piece.start_index = player.start_index
+		piece.clicked.connect(_on_piece_clicked)
+		piece.finished.connect(_on_piece_finished_signal)
 		player.add_child(piece)
 		player.pieces.append(piece)
-		piece.go_to_jail()
+		piece._go_to_jail()
 
 func _input(event):
 	if event.is_action_pressed("ui_accept") and move_state == 0:
-		print("lanzando dados")
 		_roll_dice()
-	
-	elif move_state == 1 or move_state == 2:
-		var steps: int
-		if move_state == 1:
-			steps = current_roll.dice1 
-		else:
-			steps = current_roll.dice2
-			
-		if event.is_action_pressed("piece_1"):
-			_move_piece(0, steps)
-		elif event.is_action_pressed("piece_2"):
-			_move_piece(1, steps)
-		elif event.is_action_pressed("piece_3"):
-			_move_piece(2, steps)
-		elif event.is_action_pressed("piece_4"):
-			_move_piece(3, steps)
-	
-	elif move_state == 3:
-		if event.is_action_pressed("piece_1"):
-			_move_piece_bonus(0)
-		elif event.is_action_pressed("piece_2"):
-			_move_piece_bonus(1)
-		elif event.is_action_pressed("piece_3"):
-			_move_piece_bonus(2)
-		elif event.is_action_pressed("piece_4"):
-			_move_piece_bonus(3)
-	
-	elif move_state == 4:
-		if event.is_action_pressed("piece_1"):
-			_send_to_jail(0)
-		elif event.is_action_pressed("piece_2"):
-			_send_to_jail(1)
-		elif event.is_action_pressed("piece_3"):
-			_send_to_jail(2)
-		elif event.is_action_pressed("piece_4"):
-			_send_to_jail(3)
-	
-	elif move_state == 5:
-		if event.is_action_pressed("piece_1"):
-			_send_to_jail(0)
-		elif event.is_action_pressed("piece_2"):
-			_send_to_jail(1)
-		elif event.is_action_pressed("piece_3"):
-			_send_to_jail(2)
-		elif event.is_action_pressed("piece_4"):
-			_send_to_jail(3)
 
 func _roll_dice():
 	current_roll = dice.roll()
-	print("Dado 1: ", current_roll.dice1)
-	print("Dado 2: ", current_roll.dice2)
-	print("Total: ", current_roll.total)
-	print("Par: ", current_roll.pair)
-	
 	var player = players[current_turn]
-	var can_play = player.pieces.any(func(piece):
-		if piece.is_finished or piece.in_jail:
-			return false
-		if piece.in_home_path:
-			var remaining = piece.board.home_paths[piece.color].size() - 1 - piece.home_route
-			return remaining >= current_roll.dice1 or remaining >= current_roll.dice2
-		return true)
-	var can_exit = player.pieces.any(func(p): return p.in_jail) and current_roll.pair
-
 	
+	# --- LOS PRINTS QUE NECESITAMOS ---
+	print("\n=== LANZAMIENTO JUGADOR: ", player.color.to_upper(), " ===")
+	print("Dados: [", current_roll.dice1, "] y [", current_roll.dice2, "]")
+	if current_roll.pair:
+		print("¡ES UN PAR!")
+	# ----------------------------------
+	
+	var can_play = player._can_move(current_roll)
+	var can_exit = player._has_pieces_in_jail() and current_roll.pair
+
 	if not can_play and not can_exit:
-		print("todas las fichas en la carcel")
+		print("Estado: Sin movimientos posibles. Saltando turno...")
 		_end_turn()
 		return
-	elif current_roll.pair and _has_own_barrier():
-		print("tienes una barrera, debes romperla")
+		
+	if current_roll.pair and player._has_own_barrier():
+		print("Estado: Barrera detectada. Debes abrirla.")
 		move_state = 5
-	elif can_exit:
+	else:
 		move_state = 1
-		print("Par, saca una ficha")
+		print("Estado: Esperando primer movimiento (Dado 1: ", current_roll.dice1, ")")
+
+	if not can_play and not can_exit:
+		print("Sin movimientos posibles")
+		_end_turn()
+		return
+		
+	if current_roll.pair and player._has_own_barrier():
+		print("Barrera detectada")
+		move_state = 5
 	else:
 		move_state = 1
 
 func _move_piece(piece_index: int, steps: int):
 	var player = players[current_turn]
 	var piece = player.pieces[piece_index]
+	
 	if piece.in_jail:
 		if current_roll.pair and move_state == 1:
-			piece.leave_jail()
+			print("Saliendo de la cárcel... Fin de movimiento.")
+			piece._leave_jail()
 			pulled_from_jail_this_turn = true
 			_check_capture(piece)
+			
 			if captured_this_turn:
-				captured_this_turn = false
-				move_state = 3
-				return
-			_end_turn()
-			return
+				move_state = 3 
+			else:
+				_end_turn()
+			return 
 		else:
-			print("la pieza no se puede mover")
+			print("No puedes mover esta ficha (está en la cárcel)")
 			return
 		
 	else:
 		var barrier_dist = _get_barrier_distance(piece, steps)
 		if barrier_dist != -1:
-			print("hay una barrera a ", barrier_dist, " casillas")
+			print("Bloqueo por barrera")
 			return
-		var moved = piece.move(steps)
+			
+		var moved = piece._move(steps)
 		if not moved:
-			var playable_count = player.pieces.count(func(p): return not p.in_jail and not p.is_finished)
-			if playable_count == 1:
-				move_state += 1
-				return
+			return
+
 		_check_capture(piece)
 		_check_victory(player)
-	move_state += 1
-	if move_state > 2:
-		if captured_this_turn:
-			move_state = 3
-			captured_this_turn = false
-		else:
-			_end_turn()
 		
+		move_state += 1
+		
+		if move_state > 2:
+			if captured_this_turn:
+				move_state = 3 
+			else:
+				_end_turn()
+
+
 func _move_piece_bonus(piece_index : int):
 	var player = players[current_turn]
 	var piece = player.pieces[piece_index]
 	if not piece.in_jail:
-		var moved = piece.move(bonus_steps)
+		var moved = piece._move(bonus_steps)
 		if not moved:
 			return
 		_check_capture(piece)
@@ -191,30 +156,17 @@ func _move_piece_bonus(piece_index : int):
 
 func _send_to_jail(piece_index):
 	var piece = players[current_turn].pieces[piece_index]
-	piece.go_to_jail()
+	piece._go_to_jail()
 	_end_turn()
 
 func _break_barrier(piece_index):
 	var player = players[current_turn]
-	var piece = player.pieces[piece_index]
-	var count = player.pieces.filter(func(p):
-		return not p.in_jail and not p.is_finished and p.current_position == piece.current_position)
-	if count.size() < 2:
-		print("esa ficha no está en barrera")
+	if not player._is_piece_in_barrier(piece_index):
+		print("Esa ficha no está en barrera")
 		return
+	
 	move_state = 1
 	_move_piece(piece_index, current_roll.dice1)
-
-func _has_own_barrier()-> bool:
-	var player = players[current_turn]
-	for piece in player.pieces:
-		if piece.in_jail or piece.is_finished:
-			continue
-		var count = player.pieces.filter(func(p):
-			return not p.in_jail and not p.is_finished and p.current_position == piece.current_position)
-		if count == 2:
-			return true
-	return false
 
 func _get_barrier_distance(piece, steps):
 	for i in range(1, steps + 1):
@@ -246,23 +198,15 @@ func _end_turn():
 	
 
 func _check_capture(piece):
-	var current_pos = piece.current_position
-	
-	if current_pos in board.SAFE_SQUARES:
+	if piece.current_position in board.SAFE_SQUARES:
 		return
 	
-	for player in players:
-		if player == players[current_turn]:
+	var enemies = board._get_enemies_at(piece.current_position, piece.player.player_id)
+	
+	for enemy in enemies:
+		if piece.current_position == enemy.start_index or piece.current_position == piece.player.home_entry:
 			continue
-		for enemy in player.pieces:
-			if enemy.in_jail or current_pos == enemy.start_index:
-				continue
-			elif enemy.in_home_path:
-				continue
-			var enemy_pos = enemy.current_position
-			
-			if current_pos == enemy_pos:
-				_resolve_capture(enemy)
+		_resolve_capture(enemy)
 
 func _check_victory(player):
 	var all_finished = player.pieces.all(func(p): return p.is_finished)
@@ -270,17 +214,38 @@ func _check_victory(player):
 		print("jugador ", player.color, " ganó!")
 
 func _resolve_capture(enemy):
-	if move_state == 1:
-		captured_on_first_dice = true
 	captured_this_turn = true
 	enemy.in_jail = true
-	enemy.go_to_jail()
-	print("ficha comida!")
-	bonus_steps = 10
-	move_state = 3
+	enemy._go_to_jail()
+	print("¡Ficha comida! Bonus de 20 pendiente...")
+	bonus_steps = 20
 
-func _on_piece_finished():
+func _on_piece_finished_signal():
 	_check_victory(players[current_turn])
 	bonus_steps = 24
 	captured_this_turn = true  
 	move_state = 3
+
+
+func _on_piece_clicked(piece_ref: Piece): # Cambiado a Piece
+	# 1. ¿Es el turno de este jugador?
+	if piece_ref.player != players[current_turn]:
+		print("No es tu turno")
+		return
+	
+	# 2. ¿Se han lanzado los dados? (move_state debe ser > 0)
+	if move_state == 0:
+		print("Primero lanza los dados con Espacio")
+		return
+
+	print("Click en pieza: ", piece_ref.piece_id, " | Estado: ", move_state)
+	match move_state:
+		1, 2: 
+			var steps = current_roll.dice1 if move_state == 1 else current_roll.dice2
+			_move_piece(piece_ref.piece_id, steps)
+		3: 
+			_move_piece_bonus(piece_ref.piece_id)
+		4: 
+			_send_to_jail(piece_ref.piece_id)
+		5: 
+			_break_barrier(piece_ref.piece_id)

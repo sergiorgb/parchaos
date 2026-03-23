@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://bkrp7blu3bcqe"]
+
+[ext_resource type="Script" uid="uid://c233ns1anp8u3" path="res://scripts/base_game/Dice.gd" id="1_mg5ex"]
+[ext_resource type="PackedScene" uid="uid://l66vxend6qgu" path="res://resources/dados.glb" id="2_gblyi"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_gkhvf"]
+size = Vector3(1.991554, 1.9997303, 1.9917479)
+
+[node name="Dice" type="RigidBody3D" unique_id=133164372]
+script = ExtResource("1_mg5ex")
+
+[node name="dados" parent="." unique_id=936407824 instance=ExtResource("2_gblyi")]
+transform = Transform3D(0.03, 0, 0, 0, 0.03, 0, 0, 0, 0.03, 0.013082482, 0, -0.004597824)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=511001770]
+transform = Transform3D(0.05, 0, 0, 0, 0.05, 0, 0, 0, 0.05, -0.0022446383, -0.00030124828, -0.0008884687)
+shape = SubResource("BoxShape3D_gkhvf")

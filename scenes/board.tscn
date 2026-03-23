@@ -12,6 +12,7 @@ script = ExtResource("1_tx6nw")
 transform = Transform3D(5, 0, 0, 0, 4.755283, 1.545085, 0, -1.545085, 4.755283, -0.004, 1.25, 3.56)
 
 [node name="Jail" type="Node3D" parent="." unique_id=1647134460]
+visible = false
 
 [node name="Yellow 1" type="Marker3D" parent="Jail" unique_id=784790799]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.43798995, 0.02328065, 0.43948886)
@@ -63,6 +64,7 @@ transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.4328711, 0.02328065, 0.590
 
 [node name="Main_Path" type="Node3D" parent="." unique_id=531020007]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0)
+visible = false
 
 [node name="Square0" type="Marker3D" parent="Main_Path" unique_id=1346861962]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.03438387, 0.00465613, 0.08366214)
@@ -269,6 +271,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.033909228, 0.00465613, 0.11
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.034211565, 0.00465613, 0.09866697)
 
 [node name="Yellow_Path" type="Node3D" parent="." unique_id=1765634649]
+visible = false
 
 [node name="Yellow 1" type="Marker3D" parent="Yellow_Path" unique_id=595880398]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.00065392256, 0.02328065, 0.64169216)
@@ -295,6 +298,7 @@ transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.00064224005, 0.02328065, 0
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.00064224005, 0.02328065, 0.1284202)
 
 [node name="Blue_Path" type="Node3D" parent="." unique_id=157880968]
+visible = false
 
 [node name="Blue 1" type="Marker3D" parent="Blue_Path" unique_id=1232610083]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.6608294, 0.02328065, -0.021745084)
@@ -321,6 +325,7 @@ transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.22532603, 0.02328065, -0.02
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.1514459, 0.02328065, -0.024337372)
 
 [node name="Red_Path" type="Node3D" parent="." unique_id=1567919218]
+visible = false
 
 [node name="Red 1" type="Marker3D" parent="Red_Path" unique_id=819936778]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.00094409287, 0.02328065, -0.6808332)
@@ -347,6 +352,7 @@ transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.0039677173, 0.02328065, -0.
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.0054795295, 0.02328065, -0.16681483)
 
 [node name="Green_Path" type="Node3D" parent="." unique_id=1778280719]
+visible = false
 
 [node name="Green 1" type="Marker3D" parent="Green_Path" unique_id=1389953841]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.65678144, 0.02328065, -0.0224731)
