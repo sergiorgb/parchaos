@@ -123,3 +123,15 @@ func _shake_error():
 	tween.tween_property(self, "position:x", original_pos.x - 0.1, 0.05)
 	tween.tween_property(self, "position:x", original_pos.x + 0.1, 0.05)
 	tween.tween_property(self, "position:x", original_pos.x, 0.05)
+
+func _adjust_visual_position(is_barrier: bool, piece_index_in_cell: int):
+	if not is_barrier:
+		return
+
+	var offset_distance = 0.05 
+	
+	var side_offset = Vector3(offset_distance, 0, 0) if piece_index_in_cell == 0 else Vector3(-offset_distance, 0, 0)
+	
+	var tween = create_tween()
+	var target_pos = global_position + side_offset
+	tween.tween_property(self, "global_position", target_pos, 0.2)

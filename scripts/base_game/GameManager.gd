@@ -1,12 +1,21 @@
 extends Node
 
-var Piece = preload("res://scenes/piece.tscn")
 
+@onready var camera_markers = [
+	$"../yellow", $"../blue", $"../red", $"../green"
+]
+
+var Piece = preload("res://scenes/piece.tscn")
+var DiceScene = preload("res://scenes/dice.tscn")
+
+var camera : Camera3D
+var active_dice = []
 var players = []
 var current_turn = 0
 var board = null
 var move_state = 0
 var dice = null
+var dice_results = []
 var current_roll = null
 var captured_this_turn = false
 var captured_on_first_dice = false
@@ -22,13 +31,20 @@ const PLAYER_DATA = [
 ]
 
 func _ready():
-	dice = Node.new()
-	dice.set_script(load("res://scripts/base_game/Dice.gd"))
-	add_child(dice)
 	board = $"../Board"
 	board._fill_jail()
 	board._fill_home_paths()
+	
+	# Configuración de cámara única
+	camera = get_viewport().get_camera_3d() 
+	if not camera:
+		camera = Camera3D.new()
+		add_child(camera)
+	camera.make_current()
+	
 	_setup_players()
+	_update_camera(true) # Empezar en la posición del primer jugador
+
 
 func _setup_players():
 	for data in PLAYER_DATA:
@@ -58,40 +74,53 @@ func _input(event):
 	if event.is_action_pressed("ui_accept") and move_state == 0:
 		_roll_dice()
 
+
 func _roll_dice():
-	current_roll = dice.roll()
+	get_tree().call_group("dados", "queue_free")
+	dice_results.clear()
+	active_dice.clear()
+	move_state = -1 
+	
+	var marker = camera_markers[current_turn]
+	
+	var dir_al_centro = (Vector3.ZERO - marker.global_position).normalized()
+	
+	for i in range(2):
+		var die = DiceScene.instantiate()
+		die.add_to_group("dados")
+		add_child(die)
+		
+		var spawn_pos = marker.global_position + (dir_al_centro * 0.6)
+		spawn_pos.y = 0.8
+		
+		var lateral = marker.global_transform.basis.x * (0.15 if i == 0 else -0.15)
+		die.global_position = spawn_pos + lateral
+		
+		die.linear_velocity = Vector3(0, -0.5, 0) 
+		die.angular_velocity = Vector3(randf_range(-10, 10), randf_range(-10, 10), randf_range(-10, 10))
+		
+		active_dice.append(die)
+		die.stopped.connect(_on_die_stopped)
+		
+
+func _on_die_stopped(value):
+	dice_results.append(value)
+	
+	if dice_results.size() == 2:
+		await get_tree().create_timer(1.0).timeout
+		
+		_process_physics_results()
+
+func _process_physics_results():
+	var d1 = dice_results[0]
+	var d2 = dice_results[1]
+	current_roll = {"dice1": d1, "dice2": d2, "pair": d1 == d2}
+	
+	print("Resultado Físico: ", d1, " y ", d2)
+	
 	var player = players[current_turn]
-	
-	# --- LOS PRINTS QUE NECESITAMOS ---
-	print("\n=== LANZAMIENTO JUGADOR: ", player.color.to_upper(), " ===")
-	print("Dados: [", current_roll.dice1, "] y [", current_roll.dice2, "]")
-	if current_roll.pair:
-		print("¡ES UN PAR!")
-	# ----------------------------------
-	
-	var can_play = player._can_move(current_roll)
-	var can_exit = player._has_pieces_in_jail() and current_roll.pair
-
-	if not can_play and not can_exit:
-		print("Estado: Sin movimientos posibles. Saltando turno...")
+	if not player._can_move(current_roll) and not (player._has_pieces_in_jail() and current_roll.pair):
 		_end_turn()
-		return
-		
-	if current_roll.pair and player._has_own_barrier():
-		print("Estado: Barrera detectada. Debes abrirla.")
-		move_state = 5
-	else:
-		move_state = 1
-		print("Estado: Esperando primer movimiento (Dado 1: ", current_roll.dice1, ")")
-
-	if not can_play and not can_exit:
-		print("Sin movimientos posibles")
-		_end_turn()
-		return
-		
-	if current_roll.pair and player._has_own_barrier():
-		print("Barrera detectada")
-		move_state = 5
 	else:
 		move_state = 1
 
@@ -178,7 +207,27 @@ func _get_barrier_distance(piece, steps):
 				return i
 	return -1
 
+func _check_stacking(cell_index: int):
+	var pieces_in_cell = []
+	for player in players:
+		for p in player.pieces: 
+			if p.current_position == cell_index and not p.in_jail:
+				pieces_in_cell.append(p)
+	
+	if pieces_in_cell.size() == 2:
+		pieces_in_cell[0]._adjust_visual_position(true, 0)
+		pieces_in_cell[1]._adjust_visual_position(true, 1)
+	elif pieces_in_cell.size() == 1:
+		pieces_in_cell[0]._adjust_visual_position(false, 0) # Vuelve al centro
+
 func _end_turn():
+	for d in active_dice:
+		if is_instance_valid(d):
+			d.queue_free()
+	active_dice.clear()
+	
+	get_tree().call_group("dice", "queue_free")
+	
 	if current_roll.pair and not pulled_from_jail_this_turn:
 		consecutive_pairs += 1
 		if consecutive_pairs >= 3:
@@ -195,7 +244,8 @@ func _end_turn():
 	consecutive_pairs = 0
 	current_turn = (current_turn + 1) % players.size()
 	print("Turno del jugador: ", current_turn, " move_state: ", move_state)
-	
+	_update_camera()
+	print("Cámara moviéndose al jugador: ", current_turn)
 
 func _check_capture(piece):
 	if piece.current_position in board.SAFE_SQUARES:
@@ -220,7 +270,7 @@ func _resolve_capture(enemy):
 	print("¡Ficha comida! Bonus de 20 pendiente...")
 	bonus_steps = 20
 
-func _on_piece_finished_signal():
+func _on_piece_finished_signal(piece_ref):
 	_check_victory(players[current_turn])
 	bonus_steps = 24
 	captured_this_turn = true  
@@ -249,3 +299,25 @@ func _on_piece_clicked(piece_ref: Piece): # Cambiado a Piece
 			_send_to_jail(piece_ref.piece_id)
 		5: 
 			_break_barrier(piece_ref.piece_id)
+
+func _update_camera(instant: bool = false):
+	var target_marker = camera_markers[current_turn]
+	var center_of_board = Vector3(0, 0, 0) # El centro de tu tablero
+
+	if instant:
+		camera.global_position = target_marker.global_position
+		camera.look_at(center_of_board, Vector3.UP)
+		return
+
+	var tween = create_tween()
+	
+	# 1. Animamos la POSICIÓN hacia el marcador
+	tween.tween_property(camera, "global_position", target_marker.global_position, 1.5)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	
+	# 2. En cada frame del movimiento, obligamos a la cámara a mirar al centro
+	# Esto corrige automáticamente que se ponga boca abajo o de espaldas
+	tween.parallel().tween_method(
+		func(_v): camera.look_at(center_of_board, Vector3.UP),
+		0.0, 1.0, 1.5
+	)

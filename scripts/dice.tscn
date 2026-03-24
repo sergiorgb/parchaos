@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://djndidtn23rjc"]
+
+[ext_resource type="PackedScene" uid="uid://l66vxend6qgu" path="res://resources/dados.glb" id="2_gblyi"]
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_dl5ec"]
+absorbent = true
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_dl5ec"]
+size = Vector3(0.33242798, 0.33166504, 0.32946777)
+
+[node name="dice" type="RigidBody3D" unique_id=886308307 groups=["dice"]]
+mass = 7.0
+physics_material_override = SubResource("PhysicsMaterial_dl5ec")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=568456129]
+
+[node name="dados" parent="MeshInstance3D" unique_id=936407824 instance=ExtResource("2_gblyi")]
+transform = Transform3D(0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 0.050128996, 0, -0.012334287)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1699682604]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.003902346, 0.00041878223, -0.00030517578)
+shape = SubResource("BoxShape3D_dl5ec")
