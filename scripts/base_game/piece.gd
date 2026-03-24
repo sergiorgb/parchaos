@@ -59,7 +59,7 @@ func _move(steps) -> bool:
 			return false
 		home_route += steps
 		var square = board.home_paths[color][home_route]
-		global_position = square.global_position
+		await _animate_jump_to(square.global_position).finished
 		if home_route == board.home_paths[color].size() - 1:
 			_finish()
 			return true
@@ -73,15 +73,29 @@ func _move(steps) -> bool:
 		in_home_path = true
 		home_route = steps - steps_to_entry
 		var square = board.home_paths[color][home_route]
-		global_position = square.global_position
+		await _animate_jump_to(square.global_position).finished
+
 	else:
 		var square = board.main_path[current_position]
-		global_position = square.global_position
+		await _animate_jump_to(square.global_position).finished
 	return true
 
 func _steps_to_entry(old_pos: int):
 	return (player.home_entry - old_pos + board.main_path.size()) % board.main_path.size()
 	
+
+func _animate_jump_to(target_pos: Vector3) -> Tween:
+	var final_pos = target_pos
+	final_pos.y = 0.015 
+	
+	var tween = create_tween().set_parallel(false)
+	var mid_point = (global_position + final_pos) / 2
+	mid_point.y += 0.06 
+	
+	tween.tween_property(self, "global_position", mid_point, 0.15).set_trans(Tween.TRANS_SINE)
+	tween.tween_property(self, "global_position", final_pos, 0.15).set_trans(Tween.TRANS_SINE)
+	
+	return tween
 
 func _finish():
 	is_finished = true
@@ -124,14 +138,28 @@ func _shake_error():
 	tween.tween_property(self, "position:x", original_pos.x + 0.1, 0.05)
 	tween.tween_property(self, "position:x", original_pos.x, 0.05)
 
-func _adjust_visual_position(is_barrier: bool, piece_index_in_cell: int):
-	if not is_barrier:
-		return
+func _adjust_visual_position(is_barrier: bool, piece_index_in_cell: int, cell_node: Node3D):
+	var fixed_y = 0.015 
+	
+	var target_pos = cell_node.global_position
+	target_pos.y = fixed_y
 
-	var offset_distance = 0.05 
-	
-	var side_offset = Vector3(offset_distance, 0, 0) if piece_index_in_cell == 0 else Vector3(-offset_distance, 0, 0)
-	
+	if is_barrier:
+		var current_idx = board.main_path.find(cell_node)
+		var next_idx = (current_idx + 1) % board.main_path.size()
+		var next_cell = board.main_path[next_idx]
+		
+		var forward_dir = (next_cell.global_position - cell_node.global_position).normalized()
+		
+		var side_dir = forward_dir.cross(Vector3.UP).normalized()
+		
+		var offset_distance = 0.025 
+		var direction = 1 if piece_index_in_cell == 0 else -1
+		
+		target_pos += (side_dir * offset_distance * direction)
+
 	var tween = create_tween()
-	var target_pos = global_position + side_offset
-	tween.tween_property(self, "global_position", target_pos, 0.2)
+	tween.tween_property(self, "global_position", target_pos, 0.2)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	
+	print("Ajustando pieza ", name, " a posición: ", target_pos)

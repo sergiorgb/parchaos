@@ -1,6 +1,5 @@
 extends Node
 
-
 @onready var camera_markers = [
 	$"../yellow", $"../blue", $"../red", $"../green"
 ]
@@ -35,15 +34,15 @@ func _ready():
 	board._fill_jail()
 	board._fill_home_paths()
 	
-	# Configuración de cámara única
 	camera = get_viewport().get_camera_3d() 
 	if not camera:
 		camera = Camera3D.new()
 		add_child(camera)
+
 	camera.make_current()
 	
 	_setup_players()
-	_update_camera(true) # Empezar en la posición del primer jugador
+	_update_camera(true) 
 
 
 func _setup_players():
@@ -127,12 +126,14 @@ func _process_physics_results():
 func _move_piece(piece_index: int, steps: int):
 	var player = players[current_turn]
 	var piece = player.pieces[piece_index]
+	var old_position = piece.current_position
 	
 	if piece.in_jail:
 		if current_roll.pair and move_state == 1:
 			print("Saliendo de la cárcel... Fin de movimiento.")
 			piece._leave_jail()
 			pulled_from_jail_this_turn = true
+			_check_stacking(piece.current_position)
 			_check_capture(piece)
 			
 			if captured_this_turn:
@@ -150,10 +151,12 @@ func _move_piece(piece_index: int, steps: int):
 			print("Bloqueo por barrera")
 			return
 			
-		var moved = piece._move(steps)
+		var moved = await piece._move(steps)
 		if not moved:
 			return
-
+		
+		_check_stacking(old_position)
+		_check_stacking(piece.current_position)
 		_check_capture(piece)
 		_check_victory(player)
 		
@@ -173,6 +176,7 @@ func _move_piece_bonus(piece_index : int):
 		var moved = piece._move(bonus_steps)
 		if not moved:
 			return
+		_check_stacking(piece.current_position)
 		_check_capture(piece)
 		if captured_on_first_dice:
 			move_state = 2
@@ -211,14 +215,17 @@ func _check_stacking(cell_index: int):
 	var pieces_in_cell = []
 	for player in players:
 		for p in player.pieces: 
-			if p.current_position == cell_index and not p.in_jail:
+			if p.current_position == cell_index and not p.in_jail and not p.is_finished:
 				pieces_in_cell.append(p)
 	
+	var cell_node = board.main_path[cell_index] 
+
 	if pieces_in_cell.size() == 2:
-		pieces_in_cell[0]._adjust_visual_position(true, 0)
-		pieces_in_cell[1]._adjust_visual_position(true, 1)
+		pieces_in_cell[0]._adjust_visual_position(true, 0, cell_node)
+		pieces_in_cell[1]._adjust_visual_position(true, 1, cell_node)
 	elif pieces_in_cell.size() == 1:
-		pieces_in_cell[0]._adjust_visual_position(false, 0) # Vuelve al centro
+		pieces_in_cell[0]._adjust_visual_position(false, 0, cell_node)
+	
 
 func _end_turn():
 	for d in active_dice:
@@ -245,7 +252,6 @@ func _end_turn():
 	current_turn = (current_turn + 1) % players.size()
 	print("Turno del jugador: ", current_turn, " move_state: ", move_state)
 	_update_camera()
-	print("Cámara moviéndose al jugador: ", current_turn)
 
 func _check_capture(piece):
 	if piece.current_position in board.SAFE_SQUARES:

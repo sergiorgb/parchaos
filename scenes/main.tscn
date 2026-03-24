@@ -1,28 +1,25 @@
 [gd_scene format=3 uid="uid://bbeqaiq6o7xkm"]
 
 [ext_resource type="Script" uid="uid://csv6egi4x0vcp" path="res://scripts/base_game/GameManager.gd" id="3_jyhfs"]
-[ext_resource type="Shader" uid="uid://dobohlml8x6h" path="res://resources/sky.gdshader" id="4_choun"]
 [ext_resource type="PackedScene" uid="uid://cr07kk1t6vnkv" path="res://scenes/board.tscn" id="6_tefeu"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_a8y0u"]
-shader = ExtResource("4_choun")
-shader_parameter/background_dark = false
-
-[sub_resource type="Sky" id="Sky_jkv2x"]
-sky_material = SubResource("ShaderMaterial_a8y0u")
-
-[sub_resource type="Environment" id="Environment_jbj1t"]
-background_mode = 2
-sky = SubResource("Sky_jkv2x")
+[sub_resource type="Environment" id="Environment_0wfyh"]
+background_mode = 1
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 1.6
+ssr_enabled = true
 ssao_enabled = true
 glow_enabled = true
+glow_intensity = 0.5
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.1
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_sugp2"]
 
 [node name="Node3D" type="Node3D" unique_id=1105050211]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=553287702]
-environment = SubResource("Environment_jbj1t")
+environment = SubResource("Environment_0wfyh")
 
 [node name="GameManager" type="Node" parent="." unique_id=1956910469]
 script = ExtResource("3_jyhfs")
@@ -42,30 +39,30 @@ mouse_filter = 2
 
 [node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=512031805]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 1.5, -2)
-light_color = Color(0.981131, 0.859064, 0.97733206, 1)
-light_energy = 0.4
+light_color = Color(0.69799274, 0.69799274, 0.69799274, 1)
+shadow_enabled = true
 distance_fade_enabled = true
 
 [node name="OmniLight3D2" type="OmniLight3D" parent="." unique_id=230955666]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 1.5, 2)
-light_color = Color(0.981131, 0.859064, 0.97733206, 1)
-light_energy = 0.4
+light_color = Color(0.69799274, 0.69799274, 0.69799274, 1)
+shadow_enabled = true
 distance_fade_enabled = true
 
 [node name="OmniLight3D3" type="OmniLight3D" parent="." unique_id=857622024]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.5, 2)
-light_color = Color(0.981131, 0.859064, 0.97733206, 1)
-light_energy = 0.4
+light_color = Color(0.69799274, 0.69799274, 0.69799274, 1)
+shadow_enabled = true
 distance_fade_enabled = true
 
 [node name="OmniLight3D4" type="OmniLight3D" parent="." unique_id=1945516112]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.5, -2)
-light_color = Color(0.981131, 0.859064, 0.97733206, 1)
-light_energy = 0.4
+light_color = Color(0.69799274, 0.69799274, 0.69799274, 1)
+shadow_enabled = true
 distance_fade_enabled = true
 
 [node name="yellow" type="Marker3D" parent="." unique_id=222582635]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3, 0.8, 1.3)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0.8, 1.3)
 
 [node name="blue" type="Marker3D" parent="." unique_id=2000164498]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3, 0.8, -1.3)
