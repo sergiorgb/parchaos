@@ -3,9 +3,9 @@ extends Node
 class_name Board
 
 var main_path = []
-var piece
 var jail = {}
 var home_paths = {}
+var players: Array = []
 
 const SAFE_SQUARES = [7, 12, 24, 29, 41, 46, 58, 63]
 
@@ -47,15 +47,14 @@ func _fill_home_paths():
 	for node in $Green_Path.get_children():
 		home_paths["green"].append(node)
 
+func set_players(p_players: Array):
+	players = p_players
+
 func _get_enemies_at(target_position: int, catcher_player_id: int):
 	var enemies = []
-
-	var gm = get_node("../GameManager") 
-	
-	for player in gm.players:
+	for player in players:
 		if player.player_id != catcher_player_id:
 			for piece in player.pieces:
-				# Si la pieza está fuera de la cárcel, no ha terminado y está en la misma casilla
 				if not piece.in_jail and not piece.is_finished and piece.current_position == target_position:
 					enemies.append(piece)
 	return enemies

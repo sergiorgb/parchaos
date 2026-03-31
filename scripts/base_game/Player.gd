@@ -19,28 +19,30 @@ func _has_pieces_in_jail() -> bool:
 			return true
 	return false
 
-func _can_move(roll) -> bool:
-	# Si hay piezas fuera que no han terminado, puede mover
-	for piece in pieces:
-		if not piece.in_jail and not piece.is_finished:
-			return true
-	return false
-
-func _is_valid_piece(index: int) -> bool:
-	return index >= 0 and index < pieces.size() and not pieces[index].is_finished
-
 func _has_own_barrier() -> bool:
 	for piece in pieces:
 		if piece.in_jail or piece.is_finished:
 			continue
-		var count = pieces.filter(func(p):
-			return not p.in_jail and not p.is_finished and p.current_position == piece.current_position)
-		if count.size() >= 2: # Cambiado a >= por seguridad
+		var count = 0
+		for p in pieces:
+			if not p.in_jail and not p.is_finished and p.current_position == piece.current_position:
+				count += 1
+		if count >= 2:
 			return true
 	return false
 
-func _is_piece_in_barrier(piece_index: int) -> bool:
-	var piece = pieces[piece_index]
-	var count = pieces.filter(func(p):
-		return not p.in_jail and not p.is_finished and p.current_position == piece.current_position)
-	return count.size() >= 2
+func _can_move(roll: Dictionary) -> bool:
+	var has_jail_pieces = _has_pieces_in_jail()
+	var has_active_pieces = false
+	for p in pieces:
+		if not p.in_jail and not p.is_finished:
+			has_active_pieces = true
+			break
+	
+	if roll.get("pair", false) and has_jail_pieces:
+		return true
+	
+	if has_active_pieces:
+		return true
+	
+	return false

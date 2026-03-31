@@ -5,6 +5,8 @@ signal stopped(value)
 var is_stopped = false
 
 func _physics_process(_delta):
+	if linear_velocity.length() > 1.0 and is_stopped:
+		is_stopped = false
 	# Si la velocidad es casi cero y no hemos avisado aún...
 	if linear_velocity.length() < 0.1 and angular_velocity.length() < 0.1 and not is_stopped:
 		is_stopped = true

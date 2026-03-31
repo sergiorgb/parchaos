@@ -4,6 +4,7 @@ class_name Piece
 
 signal clicked(piece_ref)
 signal finished(piece_ref)
+signal jail_exited(piece: Piece)
 
 var mouse_inside = false
 var original_y: float = 0.0
@@ -53,49 +54,86 @@ func _on_mouse_exit():
 
 func _move(steps) -> bool:
 	if in_home_path:
-		var remaining = board.home_paths[color].size() - home_route - 1
-		if steps > remaining and remaining != 0:
-			print("te faltan exactamente ", remaining, " para llegar")
-			return false
-		home_route += steps
-		var square = board.home_paths[color][home_route]
-		await _animate_jump_to(square.global_position).finished
-		if home_route == board.home_paths[color].size() - 1:
-			_finish()
-			return true
-		return true
-		
+		return await _move_in_home_path(steps)
 	
 	var steps_to_entry = _steps_to_entry(current_position)
-	route += steps
-	current_position = (route + start_index) % board.main_path.size()
+	
 	if steps >= steps_to_entry:
-		in_home_path = true
-		home_route = steps - steps_to_entry
-		var square = board.home_paths[color][home_route]
-		await _animate_jump_to(square.global_position).finished
-
-	else:
+		var steps_on_board = steps_to_entry
+		for i in range(steps_on_board):
+			route += 1
+			current_position = (route + start_index) % board.main_path.size()
+			var square = board.main_path[current_position]
+			await _animate_hop_to(square.global_position)
+		
+		var remaining_steps = steps - steps_to_entry
+		
+		if not in_home_path:
+			in_home_path = true
+			home_route = 0 
+		
+		for i in range(remaining_steps):
+			home_route += 1
+			if home_route >= board.home_paths[color].size():
+				print("Error: movimiento excede el home path")
+				return false
+			var square = board.home_paths[color][home_route]
+			await _animate_hop_to(square.global_position)
+		
+		if home_route == board.home_paths[color].size() - 1:
+			_finish()
+		
+		return true
+	
+	for i in range(steps):
+		route += 1
+		current_position = (route + start_index) % board.main_path.size()
 		var square = board.main_path[current_position]
-		await _animate_jump_to(square.global_position).finished
+		await _animate_hop_to(square.global_position)
+	
 	return true
+
+func _move_in_home_path(steps) -> bool:
+	var max_home_index = board.home_paths[color].size() - 1
+	var remaining = max_home_index - home_route
+	
+	if steps > remaining:
+		print("Faltan ", remaining, " pasos para llegar, pero se intentaron ", steps)
+		return false
+	
+	for i in range(steps):
+		home_route += 1
+		var square = board.home_paths[color][home_route]
+		await _animate_hop_to(square.global_position)
+	
+	if home_route == max_home_index:
+		_finish()
+	
+	return true
+
+func _animate_hop_to(target_pos: Vector3) -> void:
+	var start_pos = global_position
+	var final_pos = target_pos
+	final_pos.y = 0.015
+	
+	# Punto medio elevado (el "hop")
+	var mid_pos = (start_pos + final_pos) / 2
+	mid_pos.y += 0.04  # Altura del salto
+	
+	var tween = create_tween().set_parallel(false)
+	
+	# Subir y avanzar
+	tween.tween_property(self, "global_position", mid_pos, 0.08)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	# Bajar y llegar
+	tween.tween_property(self, "global_position", final_pos, 0.08)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	
+	await tween.finished
 
 func _steps_to_entry(old_pos: int):
 	return (player.home_entry - old_pos + board.main_path.size()) % board.main_path.size()
-	
 
-func _animate_jump_to(target_pos: Vector3) -> Tween:
-	var final_pos = target_pos
-	final_pos.y = 0.015 
-	
-	var tween = create_tween().set_parallel(false)
-	var mid_point = (global_position + final_pos) / 2
-	mid_point.y += 0.06 
-	
-	tween.tween_property(self, "global_position", mid_point, 0.15).set_trans(Tween.TRANS_SINE)
-	tween.tween_property(self, "global_position", final_pos, 0.15).set_trans(Tween.TRANS_SINE)
-	
-	return tween
 
 func _finish():
 	is_finished = true
@@ -109,57 +147,32 @@ func _go_to_jail():
 func _leave_jail():
 	in_jail = false
 	route = 0
-	_move(0)
-
-func _input_event(_camera, event, _position, _normal, _shape_idx):
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		clicked.emit(self) 
-
-func _mouse_enter():
-	var gm = get_node_or_null("/root/Main/GameManager") # Ajusta la ruta a tu GameManager
+	current_position = start_index 
 	
-	var tween = create_tween()
-	tween.tween_property(self, "position:y", 0.3, 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(self, "scale", Vector3(1.1, 1.1, 1.1), 0.1)
-	
-	print("Ratón encima de ficha: ", piece_id, " de color: ", color)
+	var start_square = board.main_path[start_index]
+	await _animate_hop_to(start_square.global_position)
+	jail_exited.emit(self)
 
-func _mouse_exit():
-	var tween = create_tween()
-	tween.tween_property(self, "position:y", 0.0, 0.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.parallel().tween_property(self, "scale", Vector3(1.0, 1.0, 1.0), 0.1)
+func _adjust_visual_position(is_barrier: bool, piece_index_in_cell: int, cell_index: int, cell_node: Node3D):
+	print("Ajustando ", color, " pieza ", piece_id, " | is_barrier=", is_barrier, " | index=", piece_index_in_cell, " | cell=", cell_index)
 	
-func _shake_error():
-	var tween = create_tween()
-	var original_pos = position
-	# Hace un zig-zag rápido a los lados
-	tween.tween_property(self, "position:x", original_pos.x + 0.1, 0.05)
-	tween.tween_property(self, "position:x", original_pos.x - 0.1, 0.05)
-	tween.tween_property(self, "position:x", original_pos.x + 0.1, 0.05)
-	tween.tween_property(self, "position:x", original_pos.x, 0.05)
-
-func _adjust_visual_position(is_barrier: bool, piece_index_in_cell: int, cell_node: Node3D):
 	var fixed_y = 0.015 
-	
 	var target_pos = cell_node.global_position
 	target_pos.y = fixed_y
 
 	if is_barrier:
-		var current_idx = board.main_path.find(cell_node)
-		var next_idx = (current_idx + 1) % board.main_path.size()
+		var next_idx = (cell_index + 1) % board.main_path.size()
 		var next_cell = board.main_path[next_idx]
 		
 		var forward_dir = (next_cell.global_position - cell_node.global_position).normalized()
-		
 		var side_dir = forward_dir.cross(Vector3.UP).normalized()
 		
-		var offset_distance = 0.025 
+		var offset_distance = 0.04
 		var direction = 1 if piece_index_in_cell == 0 else -1
 		
 		target_pos += (side_dir * offset_distance * direction)
+		print("  -> offset aplicado: ", target_pos)
 
 	var tween = create_tween()
 	tween.tween_property(self, "global_position", target_pos, 0.2)\
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	
-	print("Ajustando pieza ", name, " a posición: ", target_pos)
