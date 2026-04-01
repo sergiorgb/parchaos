@@ -101,40 +101,6 @@ func _spawn_pieces(player):
 func _input(event):
 	if event.is_action_pressed("ui_accept") and turn_manager.current_state == TurnManager.State.IDLE:
 		_roll_dice()
-	if event.is_action_pressed("ui_up"):
-		_debug_setup_near_victory()
-	if event.is_action_pressed("ui_down"):
-		_debug_roll(2,1)
-		
-
-func _debug_roll(d1, d2):
-	if turn_manager.current_state != TurnManager.State.IDLE:
-		return
-	_on_dice_stopped([d1, d2])
-
-func _debug_place_piece(piece: Piece, position: int):
-	piece.in_jail = false
-	piece.is_finished = false
-	piece.in_home_path = false
-	piece.current_position = position
-	piece.route = (position - piece.start_index + board.main_path.size()) % board.main_path.size()
-	piece.global_position = board.main_path[position].global_position
-
-func _debug_setup_near_victory():
-	var yellow = players[0]
-	# 3 fichas ya terminadas
-	for i in range(3):
-		yellow.pieces[i].in_jail = false
-		yellow.pieces[i].is_finished = true
-		yellow.pieces[i].in_home_path = true
-		yellow.pieces[i].home_route = board.home_paths["yellow"].size() - 1
-	# 1 ficha casi llegando
-	yellow.pieces[3].in_jail = false
-	yellow.pieces[3].in_home_path = true
-	yellow.pieces[3].home_route = board.home_paths["yellow"].size() - 3
-	var node = board.home_paths["yellow"][yellow.pieces[3].home_route]
-	yellow.pieces[3].global_position = node.global_position
-	print("Near victory: 3 fichas finished, 1 casi — lanza 2 para ganar")
 
 func _roll_dice():
 	status_label.text = "Lanzando dados..."
@@ -151,7 +117,9 @@ func _on_dice_stopped(results: Array):
 		turn_manager.end_turn()
 		return
 	
-	if not _has_any_valid_move() and turn_manager.current_state != TurnManager.State.PENALTY_JAIL and turn_manager.current_state != TurnManager.State.BREAK_BARRIER_FIRST:
+	var has_jail_exit = turn_manager.current_roll.get("pair", false) and players[turn_manager.current_player_index]._has_pieces_in_jail()
+
+	if not _has_any_valid_move() and not has_jail_exit and turn_manager.current_state != TurnManager.State.PENALTY_JAIL and turn_manager.current_state != TurnManager.State.BREAK_BARRIER_FIRST:
 		status_label.text = "Sin movimientos posibles. Pasando turno..."
 		await get_tree().create_timer(1.5).timeout
 		turn_manager.end_turn()

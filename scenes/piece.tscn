@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://dnqhcolvi4hb0"]
 
-[ext_resource type="Script" uid="uid://cvfax7ldxy08a" path="res://scripts/base_game/Piece.gd" id="1_ic7ih"]
+[ext_resource type="Script" uid="uid://cqoxsf42vo41g" path="res://scripts/base_game/Piece.gd" id="1_ic7ih"]
 [ext_resource type="PackedScene" uid="uid://biwd0p1tkioa6" path="res://resources/fichaverde.glb" id="2_al1la"]
 [ext_resource type="PackedScene" uid="uid://bj2wcpot22ojb" path="res://resources/fichaamarilla.glb" id="3_4efup"]
 [ext_resource type="PackedScene" uid="uid://cvg55irvndj1e" path="res://resources/fichaazul.glb" id="4_ik1ys"]
