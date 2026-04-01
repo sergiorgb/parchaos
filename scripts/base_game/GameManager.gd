@@ -11,18 +11,21 @@ var turn_manager: TurnManager
 var movement_manager: MovementManager
 var dice_manager: DiceManager
 var camera_controller: CameraController
+var hover_manager: HoverManager
 var camera: Camera3D
 var players = []
 var board = null
+var game_over: bool = false
 
 const PLAYER_DATA = [
-	{"id": 0, "color": "yellow", "start_index": 0, "home_entry": 63},
-	{"id": 1, "color": "blue", "start_index": 17, "home_entry": 12},
-	{"id": 2, "color": "red", "start_index": 34, "home_entry": 29},
-	{"id": 3, "color": "green", "start_index": 51, "home_entry": 46}
+	{"id": 0, "color": "yellow", "name": "amarillo", "start_index": 0, "home_entry": 63},
+	{"id": 1, "color": "blue", "name": "azul", "start_index": 17, "home_entry": 12},
+	{"id": 2, "color": "red", "name": "rojo", "start_index": 34, "home_entry": 29},
+	{"id": 3, "color": "green", "name": "verde", "start_index": 51, "home_entry": 46}
 ]
 
 func _ready():
+	await get_tree().process_frame
 	board = $"../Board"
 	board._fill_jail()
 	board._fill_home_paths()
@@ -33,8 +36,8 @@ func _ready():
 		add_child(camera)
 	camera.make_current()
 	
-	_setup_players()
 	_setup_managers()
+	_setup_players()
 	
 	turn_manager.start_turn(0)
 	camera_controller.move_to_player(0, true)
@@ -66,12 +69,16 @@ func _setup_managers():
 	turn_manager.penalty_select_piece.connect(_on_penalty)
 	turn_manager.break_barrier_requested.connect(_on_break_barrier_requested)
 	turn_manager.barrier_broken_continue.connect(_on_barrier_broken_continue)
+	
+	hover_manager = HoverManager.new()
+	add_child(hover_manager)
+	hover_manager.setup(board, turn_manager, movement_manager)
 
 func _setup_players():
 	for data in PLAYER_DATA:
 		var player = Player.new()
 		add_child(player)
-		player.setup(data.id, data.color, data.start_index, data.home_entry)
+		player.setup(data.id, data.color, data.name, data.start_index, data.home_entry)
 		players.append(player)
 		_spawn_pieces(player)
 
@@ -85,6 +92,8 @@ func _spawn_pieces(player):
 		piece.start_index = player.start_index
 		piece.clicked.connect(_on_piece_clicked)
 		piece.finished.connect(_on_piece_finished_signal)
+		piece.hovered.connect(hover_manager.on_piece_hovered)
+		piece.unhovered.connect(hover_manager.on_piece_unhovered)
 		player.add_child(piece)
 		player.pieces.append(piece)
 		piece._go_to_jail()
@@ -92,9 +101,43 @@ func _spawn_pieces(player):
 func _input(event):
 	if event.is_action_pressed("ui_accept") and turn_manager.current_state == TurnManager.State.IDLE:
 		_roll_dice()
+	if event.is_action_pressed("ui_up"):
+		_debug_setup_near_victory()
+	if event.is_action_pressed("ui_down"):
+		_debug_roll(2,1)
+		
+
+func _debug_roll(d1, d2):
+	if turn_manager.current_state != TurnManager.State.IDLE:
+		return
+	_on_dice_stopped([d1, d2])
+
+func _debug_place_piece(piece: Piece, position: int):
+	piece.in_jail = false
+	piece.is_finished = false
+	piece.in_home_path = false
+	piece.current_position = position
+	piece.route = (position - piece.start_index + board.main_path.size()) % board.main_path.size()
+	piece.global_position = board.main_path[position].global_position
+
+func _debug_setup_near_victory():
+	var yellow = players[0]
+	# 3 fichas ya terminadas
+	for i in range(3):
+		yellow.pieces[i].in_jail = false
+		yellow.pieces[i].is_finished = true
+		yellow.pieces[i].in_home_path = true
+		yellow.pieces[i].home_route = board.home_paths["yellow"].size() - 1
+	# 1 ficha casi llegando
+	yellow.pieces[3].in_jail = false
+	yellow.pieces[3].in_home_path = true
+	yellow.pieces[3].home_route = board.home_paths["yellow"].size() - 3
+	var node = board.home_paths["yellow"][yellow.pieces[3].home_route]
+	yellow.pieces[3].global_position = node.global_position
+	print("Near victory: 3 fichas finished, 1 casi — lanza 2 para ganar")
 
 func _roll_dice():
-	status_label.text = "🎲 Lanzando dados..."
+	status_label.text = "Lanzando dados..."
 	status_label.visible = true
 	dice_manager.roll_for_player(turn_manager.current_player_index)
 
@@ -108,6 +151,16 @@ func _on_dice_stopped(results: Array):
 		turn_manager.end_turn()
 		return
 	
+	if not _has_any_valid_move() and turn_manager.current_state != TurnManager.State.PENALTY_JAIL and turn_manager.current_state != TurnManager.State.BREAK_BARRIER_FIRST:
+		status_label.text = "Sin movimientos posibles. Pasando turno..."
+		await get_tree().create_timer(1.5).timeout
+		turn_manager.end_turn()
+		return
+	
+	# Highlight DESPUÉS de procesar, solo si hay dados reales
+	if dice_manager.dice_nodes.size() > 0:
+		dice_manager.highlight_active_dice(0)
+	
 	match turn_manager.current_state:
 		TurnManager.State.PENALTY_JAIL:
 			status_label.text = "¡3 pares! Elige una ficha tuya para la cárcel"
@@ -119,24 +172,21 @@ func _on_dice_stopped(results: Array):
 func _on_piece_clicked(piece_ref: Piece):
 	# Validaciones básicas
 	if piece_ref.player != players[turn_manager.current_player_index]:
-		print("No es tu turno")
+		status_label.text = "No es tu turno"
 		return
 	
 	if not turn_manager.can_click_piece():
-		print("Espera los dados")
+		status_label.text = "Espera los dados"
 		return
 	
-	# ========== MANEJO DE CÁRCEL ==========
 	if piece_ref.in_jail:
 		_handle_jail_exit(piece_ref)
 		return
 	
-	# ========== MANEJO DE BREAK_BARRIER_FIRST ==========
 	if turn_manager.current_state == TurnManager.State.BREAK_BARRIER_FIRST:
 		_handle_break_barrier_first(piece_ref)
 		return
 	
-	# ========== MOVIMIENTO NORMAL ==========
 	if turn_manager.current_state in [TurnManager.State.MOVE_DICE_1, TurnManager.State.MOVE_DICE_2]:
 		_execute_move(piece_ref, turn_manager.get_current_steps())
 	elif turn_manager.current_state == TurnManager.State.BONUS_MOVE:
@@ -181,11 +231,9 @@ func _handle_break_barrier_first(piece: Piece):
 		status_label.text = "Selecciona una ficha que forme parte de una barrera"
 		return
 	
-	# ✅ Romper la barrera con los pasos del DADO 1
 	var steps = turn_manager.current_roll.get("dice1", 0)
 	await movement_manager.break_barrier(piece, steps)
 	
-	# ✅ Marcar que ya rompió barrera y pasar al DADO 2
 	turn_manager.has_broken_barrier_this_turn = true
 	turn_manager.current_state = TurnManager.State.MOVE_DICE_2
 	
@@ -193,47 +241,85 @@ func _handle_break_barrier_first(piece: Piece):
 
 func _on_jail_exited(_piece: Piece):
 	turn_manager.on_jail_exit()
+	movement_manager._check_capture(_piece)
 	movement_manager._check_stacking(_piece.current_position)
-	status_label.text = "¡Ficha liberada! Fin del turno"
-	await get_tree().create_timer(0.8).timeout
-	turn_manager.end_turn()
+	var captured = movement_manager.captured_this_turn
+	movement_manager.reset_capture_flag()
+	
+	if captured:
+		status_label.text = "¡Ficha liberada y captura!"
+		turn_manager.current_roll["bonus"] = 10
+		turn_manager.bonus_came_from_dice = 2  # jail exit = no queda dado pendiente
+		turn_manager.current_state = TurnManager.State.BONUS_MOVE
+		turn_manager.bonus_move_available.emit(10)
+	else:
+		status_label.text = "¡Ficha liberada! Fin del turno"
+		await get_tree().create_timer(0.8).timeout
+		turn_manager.end_turn()
 
 func _execute_move(piece: Piece, steps: int):
 	var is_pair = turn_manager.current_roll.get("pair", false)
 	var target_pos = (piece.current_position + steps) % board.main_path.size()
 	
-	print("🔍 _execute_move")
-	print("   Pieza: ", piece.color, " ", piece.piece_id)
-	print("   Posición actual: ", piece.current_position)
-	print("   Pasos: ", steps)
-	print("   Destino: ", target_pos)
-	print("   Es par? ", is_pair)
-	
 	# Verificar barrera propia
 	var is_own_barrier = movement_manager.is_own_barrier_at_pos(piece, target_pos)
-	print("   ¿Es barrera propia en destino? ", is_own_barrier)
 	
 	if is_own_barrier:
 		if is_pair:
-			print("🔨 Barrera propia detectada CON par. Activando BREAK_BARRIER")
 			turn_manager.pending_move_piece = piece
 			turn_manager.pending_move_steps = steps
 			turn_manager.request_break_barrier()
 			return
 		else:
-			print("No puedes caer en barrera propia sin par")
 			return
 	
-	print("   Intentando mover normalmente...")
 	
 	if not await movement_manager.move_piece(piece, steps, is_pair):
-		print("   Movimiento inválido")
+		print("Movimiento inválido")
+		if not _has_any_valid_move():
+			status_label.text = "Sin movimientos posibles. Pasando turno..."
+			await get_tree().create_timer(1.5).timeout
+			turn_manager.end_turn()
 		return
 	
-	var captured = movement_manager.captured_this_turn
+	var captured = movement_manager.captured_this_turn 
+	movement_manager.reset_capture_flag()
 	movement_manager.check_victory(piece.player)
 	turn_manager.on_piece_moved(true, captured)
-	status_label.visible = false
+	
+	if turn_manager.current_state == TurnManager.State.MOVE_DICE_2:
+		if not _has_any_valid_move():
+			status_label.text = "Sin movimientos posibles con dado 2. Pasando turno..."
+			await get_tree().create_timer(1.5).timeout
+			turn_manager.end_turn()
+			return
+	
+	match turn_manager.current_state:
+		TurnManager.State.MOVE_DICE_2:
+			dice_manager.reset_dice_highlight(0)
+			dice_manager.highlight_active_dice(1)
+			status_label.text = "Mueve con dado 2: " + str(turn_manager.current_roll.get("dice2", 0))
+			status_label.visible = true
+		TurnManager.State.BONUS_MOVE:
+			dice_manager.reset_dice_highlight(1)
+			status_label.text = "¡Bonus! Mueve " + str(turn_manager.current_roll.get("bonus", 0)) + " pasos"
+			status_label.visible = true
+		TurnManager.State.IDLE:
+			dice_manager.reset_dice_highlight(1)
+
+func _has_any_valid_move() -> bool:
+	var current_player = players[turn_manager.current_player_index]
+	var steps = turn_manager.get_current_steps()
+	
+	if steps == 0:
+		return false
+	
+	for piece in current_player.pieces:
+		if not piece.in_jail and not piece.is_finished:
+			if movement_manager.can_move_piece(piece, steps):
+				return true
+	
+	return false
 
 func _execute_penalty(piece: Piece):
 	piece._go_to_jail()
@@ -243,15 +329,17 @@ func _on_capture_happened(_enemy: Piece, bonus: int):
 	turn_manager.current_roll["bonus"] = bonus
 
 func _on_piece_finished_signal(_piece_ref):
-	turn_manager.current_roll["bonus"] = 24
+	if movement_manager.check_victory(_piece_ref.player):
+		turn_manager.current_state = TurnManager.State.IDLE
+		return
+	turn_manager.current_roll["bonus"] = 10
 	turn_manager.captured_this_turn = true
-	turn_manager.on_piece_moved(true, true)
 
 func _on_bonus_move(steps: int):
 	status_label.text = "¡Bonus de " + str(steps) + "! Mueve una ficha"
 
 func _on_break_barrier_requested():
-	status_label.text = "🔨 Rompe la barrera: selecciona una ficha de la barrera para mover 1 paso"
+	status_label.text = "Rompe la barrera: selecciona una ficha de la barrera para mover 1 paso"
 
 func _on_barrier_broken_continue():
 	status_label.text = "Barrera rota! Ahora mueve tu ficha " + str(turn_manager.pending_move_steps) + " pasos"
@@ -261,11 +349,16 @@ func _on_penalty():
 
 func _on_turn_started(player_index: int):
 	camera_controller.move_to_player(player_index, false)
+	if game_over:
+		return
+	status_label.text = "Turno de " + players[player_index].display_name.to_upper() + " — Presiona espacio para lanzar"
 
 func _on_turn_ended(_player_index: int):
+	if game_over:
+		return
 	dice_manager.clear_for_turn_end()
-	status_label.visible = false
 
 func _on_victory_achieved(player: Player):
-	status_label.text = "🏆 ¡" + player.color.to_upper() + " GANA!"
-	print("¡Jugador ", player.color, " ha ganado!")
+	game_over = true
+	status_label.text = "¡" + player.display_name.to_upper() + " GANA!"
+	status_label.visible = true

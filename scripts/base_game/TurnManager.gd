@@ -28,6 +28,7 @@ var has_broken_barrier_this_turn: bool = false  # ✅ Nueva
 var players: Array = []
 var pending_move_piece: Piece = null
 var pending_move_steps: int = 0
+var bonus_came_from_dice: int = 0  # 1 o 2
 
 func setup(p_players: Array):
 	players = p_players
@@ -35,6 +36,7 @@ func setup(p_players: Array):
 func start_turn(player_index: int):
 	current_player_index = player_index
 	current_state = State.IDLE
+	bonus_came_from_dice = 0
 	has_exited_jail_this_turn = false
 	has_broken_barrier_this_turn = false
 	captured_this_turn = false
@@ -66,7 +68,6 @@ func process_roll(dice_results: Array) -> bool:
 	else:
 		consecutive_pairs = 0
 	
-	# ✅ Si sacó par y tiene barrera propia, debe romperla primero
 	if is_pair and player._has_own_barrier() and not has_broken_barrier_this_turn:
 		current_state = State.BREAK_BARRIER_FIRST
 		break_barrier_requested.emit()
@@ -85,18 +86,28 @@ func on_piece_moved(success: bool, captured: bool = false):
 	match current_state:
 		State.MOVE_DICE_1:
 			if captured_this_turn:
+				bonus_came_from_dice = 1
 				current_state = State.BONUS_MOVE
 				bonus_move_available.emit(10)
+				captured_this_turn = false
 			else:
 				current_state = State.MOVE_DICE_2
+
 		State.MOVE_DICE_2:
 			if captured_this_turn:
+				bonus_came_from_dice = 2
 				current_state = State.BONUS_MOVE
 				bonus_move_available.emit(10)
+				captured_this_turn = false
 			else:
 				end_turn()
+
 		State.BONUS_MOVE:
-			end_turn()
+			captured_this_turn = false
+			if bonus_came_from_dice == 1:
+				current_state = State.MOVE_DICE_2  # aún queda dado 2
+			else:
+				end_turn()
 
 func on_jail_exit():
 	has_exited_jail_this_turn = true
@@ -106,14 +117,18 @@ func end_turn():
 	
 	var has_pair = current_roll.get("pair", false)
 	
-	if has_pair and not has_exited_jail_this_turn and current_state != State.PENALTY_JAIL:
-		print("🎲 ¡Par! Turno extra para jugador ", current_player_index)
+	var used_both_dice = current_state in [State.MOVE_DICE_2, State.BONUS_MOVE, State.IDLE] or has_broken_barrier_this_turn
+
+	if has_pair and used_both_dice and not has_exited_jail_this_turn and current_state != State.PENALTY_JAIL:
 		has_exited_jail_this_turn = false
 		has_broken_barrier_this_turn = false
 		captured_this_turn = false
 		current_roll = {}
 		start_turn(current_player_index)
 		return
+	
+	if has_exited_jail_this_turn:
+		consecutive_pairs = 0 
 	
 	consecutive_pairs = 0
 	current_player_index = (current_player_index + 1) % players.size()

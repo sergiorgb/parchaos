@@ -5,6 +5,8 @@ class_name Piece
 signal clicked(piece_ref)
 signal finished(piece_ref)
 signal jail_exited(piece: Piece)
+signal hovered(piece_ref)
+signal unhovered(piece_ref)
 
 var mouse_inside = false
 var original_y: float = 0.0
@@ -39,15 +41,16 @@ func _ready():
 
 func _on_area_3d_input_event(_camera, event, _position, _normal, _shape_idx):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		print("Pieza ", piece_id, " de color ", color, " DICE: Me han clicado!")
 		clicked.emit(self)
 
 func _on_mouse_enter():
+	hovered.emit(self)
 	var tween = create_tween()
 	tween.tween_property(self, "position:y", original_y + 0.02, 0.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(self, "scale", Vector3(1.1, 1.1, 1.1), 0.1)
 
 func _on_mouse_exit():
+	unhovered.emit(self)
 	var tween = create_tween()
 	tween.tween_property(self, "position:y", original_y, 0.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tween.parallel().tween_property(self, "scale", Vector3(1.0, 1.0, 1.0), 0.1)
@@ -75,7 +78,6 @@ func _move(steps) -> bool:
 		for i in range(remaining_steps):
 			home_route += 1
 			if home_route >= board.home_paths[color].size():
-				print("Error: movimiento excede el home path")
 				return false
 			var square = board.home_paths[color][home_route]
 			await _animate_hop_to(square.global_position)
@@ -98,7 +100,6 @@ func _move_in_home_path(steps) -> bool:
 	var remaining = max_home_index - home_route
 	
 	if steps > remaining:
-		print("Faltan ", remaining, " pasos para llegar, pero se intentaron ", steps)
 		return false
 	
 	for i in range(steps):
@@ -154,8 +155,6 @@ func _leave_jail():
 	jail_exited.emit(self)
 
 func _adjust_visual_position(is_barrier: bool, piece_index_in_cell: int, cell_index: int, cell_node: Node3D):
-	print("Ajustando ", color, " pieza ", piece_id, " | is_barrier=", is_barrier, " | index=", piece_index_in_cell, " | cell=", cell_index)
-	
 	var fixed_y = 0.015 
 	var target_pos = cell_node.global_position
 	target_pos.y = fixed_y
@@ -171,7 +170,6 @@ func _adjust_visual_position(is_barrier: bool, piece_index_in_cell: int, cell_in
 		var direction = 1 if piece_index_in_cell == 0 else -1
 		
 		target_pos += (side_dir * offset_distance * direction)
-		print("  -> offset aplicado: ", target_pos)
 
 	var tween = create_tween()
 	tween.tween_property(self, "global_position", target_pos, 0.2)\

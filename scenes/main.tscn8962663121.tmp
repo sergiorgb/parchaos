@@ -31,48 +31,38 @@ layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 99.0
-offset_top = 73.0
-offset_right = 99.0
-offset_bottom = 73.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
 [node name="StatusLabel" type="Label" parent="UI/GameUI" unique_id=1549670533]
 layout_mode = 0
-offset_left = -52.0
-offset_top = -38.0
-offset_right = -12.0
-offset_bottom = -15.0
+offset_right = 40.0
+offset_bottom = 23.0
 
 [node name="Board" parent="." unique_id=1352643309 instance=ExtResource("6_tefeu")]
 
 [node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=512031805]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 1.5, -2)
 light_color = Color(0.69799274, 0.69799274, 0.69799274, 1)
-light_energy = 0.75
 shadow_enabled = true
 distance_fade_enabled = true
 
 [node name="OmniLight3D2" type="OmniLight3D" parent="." unique_id=230955666]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 1.5, 2)
 light_color = Color(0.69799274, 0.69799274, 0.69799274, 1)
-light_energy = 0.75
 shadow_enabled = true
 distance_fade_enabled = true
 
 [node name="OmniLight3D3" type="OmniLight3D" parent="." unique_id=857622024]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.5, 2)
 light_color = Color(0.69799274, 0.69799274, 0.69799274, 1)
-light_energy = 0.75
 shadow_enabled = true
 distance_fade_enabled = true
 
 [node name="OmniLight3D4" type="OmniLight3D" parent="." unique_id=1945516112]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.5, -2)
 light_color = Color(0.69799274, 0.69799274, 0.69799274, 1)
-light_energy = 0.75
 shadow_enabled = true
 distance_fade_enabled = true
 

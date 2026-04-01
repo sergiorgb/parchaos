@@ -23,20 +23,34 @@ func can_move_piece(piece: Piece, steps: int, is_pair: bool = false) -> bool:
 	var target_pos = (piece.current_position + steps) % board.main_path.size()
 	
 	# Validar límite de 2 fichas por casilla
-	var pieces_on_target = 0
+	var own_count = 0
+	var enemy_count = 0
+
 	for player in players:
 		for p in player.pieces:
-			if not p.in_jail and not p.is_finished and p != piece and p.current_position == target_pos:
-				pieces_on_target += 1
-	
-	if pieces_on_target >= 2:
-		print("No se puede mover: ya hay 2 fichas en destino")
+			if p.in_jail or p.is_finished or p == piece:
+				continue
+			if p.current_position == target_pos:
+				if player == piece.player:
+					own_count += 1
+				else:
+					enemy_count += 1
+
+	# Barrera enemiga — bloqueado
+	if enemy_count >= 2:
+		return false
+
+	# No puedes caer donde hay enemigos si ya hay ficha propia (evita mezcla)
+	if enemy_count >= 1 and own_count >= 1:
+		return false
+
+	# No puedes caer donde ya tienes 2 propias
+	if own_count >= 2:
 		return false
 	
 	# Verificar barreras en el camino
 	var barrier_distance = _get_barrier_distance(piece, steps)
 	if barrier_distance != -1 and barrier_distance <= steps:
-		print("Movimiento bloqueado por barrera")
 		return false
 	
 	# Verificar home path
@@ -67,34 +81,25 @@ func break_barrier(piece: Piece, steps: int):
 	var current_pos = piece.current_position
 	var next_pos = (current_pos + steps) % board.main_path.size()
 	
-	print("Rompiendo barrera: moviendo ficha ", piece.piece_id, " de ", piece.color, " desde ", current_pos, " a ", next_pos, " (", steps, " pasos)")
 	
-	# ✅ Mover la ficha usando _move (ya maneja route y animación)
 	var success = await piece._move(steps)
 	if not success:
-		print("Error al mover la ficha")
 		return
 	
-	# Reajustar stacking en ambas posiciones
 	_check_stacking(current_pos)
 	_check_stacking(piece.current_position)
 	
-	# Verificar si la ficha entró a home path
 	if piece.current_position == piece.player.home_entry:
 		piece.in_home_path = true
 		piece.home_route = 0
 
 func is_own_barrier_at_pos(piece: Piece, target_pos: int) -> bool:
 	var count = 0
-	print("🔍 is_own_barrier_at_pos - target_pos: ", target_pos)
 	
 	for p in piece.player.pieces:
-		print("   Revisando ficha ", p.piece_id, " pos: ", p.current_position, " | in_jail: ", p.in_jail, " | finished: ", p.is_finished)
 		if not p.in_jail and not p.is_finished and p.current_position == target_pos:
 			count += 1
-			print("      -> Coincide! Count: ", count)
 	
-	print("   Total fichas propias en destino: ", count)
 	return count >= 2
 
 # Mantener la versión interna si quieres, pero actualizar referencias
@@ -120,25 +125,18 @@ func _break_barrier_at(target_pos: int, player: Player):
 	
 	for p in player.pieces:
 		if not p.in_jail and not p.is_finished and p.current_position == target_pos:
-			# Mover la ficha 1 paso adelante
-			print("Rompiendo barrera: moviendo ficha ", p.piece_id, " de ", player.color, " desde ", target_pos)
-			
-			# Calcular siguiente posición
 			var next_pos = (target_pos + 1) % board.main_path.size()
 			
-			# Actualizar posición de la ficha
 			p.current_position = next_pos
 			p.route += 1
 			
-			# Animar movimiento
 			var next_cell = board.main_path[next_pos]
 			await p._animate_hop_to(next_cell.global_position)
 			
-			# Reajustar stacking en ambas posiciones
 			_check_stacking(target_pos)
 			_check_stacking(next_pos)
 			
-			break  # Solo rompemos una ficha por ahora
+			break
 
 func _get_barrier_distance(piece: Piece, steps: int) -> int:
 	var current_pos = piece.current_position
@@ -168,32 +166,31 @@ func move_piece(piece: Piece, steps: int, is_pair: bool = false) -> bool:
 	
 	if is_own_barrier and is_pair:
 		# No mover aún, primero hay que romper barrera
-		print("🔨 Se necesita romper barrera antes de mover")
 		return false  # Esto hará que GameManager entre en BREAK_BARRIER
+	
+	if not piece.in_home_path:  # ← solo si NO está en home path
+		_check_stacking(piece.current_position)
 	
 	if not await piece._move(steps):
 		return false
 	
+	_check_capture(piece)  # captura primero — mueve enemigo a cárcel
+	await get_tree().process_frame  # esperar un frame
 	_check_stacking(piece.current_position)
-	_check_capture(piece)
 	
 	return true
 
 func _check_capture(piece: Piece):
-	# Casillas seguras no permiten captura
 	if piece.current_position in board.SAFE_SQUARES:
 		return
 	
 	var enemies = board._get_enemies_at(piece.current_position, piece.player.player_id)
 	
 	for enemy in enemies:
-		# No se puede capturar en casilla de inicio propia
-		if piece.current_position == piece.start_index:
+		if enemy.current_position == enemy.player.start_index:
 			continue
-		# No se puede capturar en la entrada al home path
-		if piece.current_position == piece.player.home_entry:
+		if enemy.current_position == enemy.player.home_entry:
 			continue
-		
 		_resolve_capture(enemy)
 
 func _resolve_capture(enemy: Piece):
@@ -207,17 +204,11 @@ func _check_stacking(cell_index: int):
 	
 	for player in players:
 		for p in player.pieces:
-			if p.current_position == cell_index and not p.in_jail and not p.is_finished:
+			if p.current_position == cell_index and not p.in_jail and not p.is_finished and not p.in_home_path:
 				pieces_in_cell.append(p)
-	
-	# ✅ Si hay más de 2 fichas, es un error de reglas
-	if pieces_in_cell.size() > 2:
-		print("⚠️ ERROR: ", pieces_in_cell.size(), " fichas en la misma casilla! Ajustando a 2 máximo")
-		# Por ahora, solo mostramos el error, pero idealmente deberíamos evitar que esto pase
 	
 	var cell_node = board.main_path[cell_index]
 	
-	# ✅ Limitar a máximo 2 fichas visualmente
 	var visible_count = min(2, pieces_in_cell.size())
 	
 	if visible_count >= 2:

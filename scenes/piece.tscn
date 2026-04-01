@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://dnqhcolvi4hb0"]
 
-[ext_resource type="Script" uid="uid://cuv2hfmutmh13" path="res://scripts/base_game/Piece.gd" id="1_ic7ih"]
+[ext_resource type="Script" uid="uid://cvfax7ldxy08a" path="res://scripts/base_game/Piece.gd" id="1_ic7ih"]
 [ext_resource type="PackedScene" uid="uid://biwd0p1tkioa6" path="res://resources/fichaverde.glb" id="2_al1la"]
 [ext_resource type="PackedScene" uid="uid://bj2wcpot22ojb" path="res://resources/fichaamarilla.glb" id="3_4efup"]
 [ext_resource type="PackedScene" uid="uid://cvg55irvndj1e" path="res://resources/fichaazul.glb" id="4_ik1ys"]
@@ -16,16 +16,16 @@ script = ExtResource("1_ic7ih")
 [node name="Visual" type="Node3D" parent="." unique_id=110254972]
 
 [node name="yellow" parent="Visual" unique_id=1004730829 instance=ExtResource("3_4efup")]
-transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.059883438, 0)
+transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.055, 0)
 
 [node name="blue" parent="Visual" unique_id=272536966 instance=ExtResource("4_ik1ys")]
-transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.059883438, 0)
+transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.055, 0)
 
 [node name="red" parent="Visual" unique_id=1510272652 instance=ExtResource("5_at83j")]
-transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.059883438, 0)
+transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.055, 0)
 
 [node name="green" parent="Visual" unique_id=1707075601 instance=ExtResource("2_al1la")]
-transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.059883438, 0)
+transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.055, 0)
 
 [node name="Area3D" type="Area3D" parent="." unique_id=183664400]
 
