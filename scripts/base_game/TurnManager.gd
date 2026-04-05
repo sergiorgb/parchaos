@@ -118,8 +118,6 @@ func end_turn():
 	var has_pair = current_roll.get("pair", false)
 	
 	var used_both_dice = current_state in [State.MOVE_DICE_2, State.BONUS_MOVE] or has_broken_barrier_this_turn
-	print("end_turn - has_pair: ", current_roll.get("pair", false), " | used_both: ", used_both_dice, " | exited_jail: ", has_exited_jail_this_turn, " | state: ", current_state)
-	
 	
 	if has_pair and used_both_dice and not has_exited_jail_this_turn and current_state != State.PENALTY_JAIL:
 		has_exited_jail_this_turn = false

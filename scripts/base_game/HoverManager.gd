@@ -56,7 +56,6 @@ func on_piece_unhovered(piece: Piece):
 			highlight_owner = null
 
 func _show_ghost(piece: Piece, target_pos: Vector3):
-	print("_show_ghost - color: ", piece.color, " | target: ", target_pos)
 	var ghost = piece.duplicate()
 	ghost.set_script(null)
 	
@@ -83,7 +82,6 @@ func _show_ghost(piece: Piece, target_pos: Vector3):
 	get_tree().root.add_child(ghost)
 	current_highlight = ghost
 	ghost.global_position = Vector3(target_pos.x, 0.025, target_pos.z)
-	print("ghost creado en: ", ghost.global_position)
 
 func _clear_highlight():
 	if current_highlight:

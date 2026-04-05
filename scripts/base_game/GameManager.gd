@@ -243,7 +243,6 @@ func _execute_move(piece: Piece, steps: int):
 	
 	
 	if not await movement_manager.move_piece(piece, steps, is_pair):
-		print("Movimiento inválido")
 		if not _has_any_valid_move():
 			status_label.text = "Sin movimientos posibles. Pasando turno..."
 			await get_tree().create_timer(1.5).timeout
