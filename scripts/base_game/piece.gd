@@ -21,6 +21,10 @@ var color: String
 var in_home_path = false
 var home_route = 0
 var is_finished = false
+var is_shielded: bool = false
+var shield_turns: int = 0
+var is_frozen: bool = false
+var frozen_turns: int = 0
 
 func _ready():
 	$Visual/yellow.visible = false
@@ -139,6 +143,47 @@ func _steps_to_entry(old_pos: int):
 func _finish():
 	is_finished = true
 	finished.emit(self)
+
+func _tick_status_effects():
+	if shield_turns > 0:
+		shield_turns -= 1
+		if shield_turns <= 0:
+			is_shielded = false
+	if frozen_turns > 0:
+		frozen_turns -= 1
+		if frozen_turns <= 0:
+			is_frozen = false
+
+func _apply_shield(turns: int):
+	is_shielded = true
+	shield_turns = turns
+
+func _apply_freeze(turns: int):
+	is_frozen = true
+	frozen_turns = turns
+
+func _move_backward(steps: int):
+	if in_home_path:
+		for i in range(steps):
+			home_route -= 1
+			if home_route < 0:
+				in_home_path = false
+				route = (player.home_entry - start_index + board.main_path.size()) % board.main_path.size()
+				current_position = player.home_entry
+				var remaining = steps - i - 1
+				if remaining > 0:
+					await _move_backward(remaining)
+				return
+			var square = board.home_paths[color][home_route]
+			await _animate_hop_to(square.global_position)
+		return
+	for i in range(steps):
+		route -= 1
+		if route < 0:
+			route += board.main_path.size()
+		current_position = (route + start_index) % board.main_path.size()
+		var square = board.main_path[current_position]
+		await _animate_hop_to(square.global_position)
 
 func _go_to_jail():
 	in_jail = true

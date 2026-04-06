@@ -91,6 +91,7 @@ func _clear_dice():
 		if is_instance_valid(d):
 			d.queue_free()
 	active_dice.clear()
+	dice_nodes.clear()
 	get_tree().call_group("dados", "queue_free")
 
 func clear_for_turn_end():

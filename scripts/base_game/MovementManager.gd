@@ -19,6 +19,8 @@ func setup(p_board: Board, p_players: Array):
 func can_move_piece(piece: Piece, steps: int, is_pair: bool = false) -> bool:
 	if piece.is_finished or piece.in_jail:
 		return false
+	if piece.is_frozen:
+		return false
 	
 	var target_pos = (piece.current_position + steps) % board.main_path.size()
 	
@@ -187,6 +189,8 @@ func _check_capture(piece: Piece):
 	var enemies = board._get_enemies_at(piece.current_position, piece.player.player_id)
 	
 	for enemy in enemies:
+		if enemy.is_shielded:
+			continue
 		if enemy.current_position == enemy.player.start_index:
 			continue
 		if enemy.current_position == enemy.player.home_entry:
@@ -195,6 +199,13 @@ func _check_capture(piece: Piece):
 
 func _resolve_capture(enemy: Piece):
 	enemy.in_jail = true
+	enemy.in_home_path = false
+	enemy.home_route = 0
+	enemy.route = 0
+	enemy.is_shielded = false
+	enemy.shield_turns = 0
+	enemy.is_frozen = false
+	enemy.frozen_turns = 0
 	enemy._go_to_jail()
 	captured_this_turn = true
 	capture_happened.emit(enemy, 10)

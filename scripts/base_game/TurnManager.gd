@@ -11,11 +11,13 @@ signal barrier_broken_continue()
 enum State {
 	IDLE,
 	ROLLING,
-	BREAK_BARRIER_FIRST,  # ✅ Nuevo: romper barrera obligatoria al sacar par
+	BREAK_BARRIER_FIRST,
 	MOVE_DICE_1,
 	MOVE_DICE_2,
 	BONUS_MOVE,
-	PENALTY_JAIL
+	PENALTY_JAIL,
+	CARD_SELECT,
+	CARD_TARGET
 }
 
 var current_state: State = State.IDLE
@@ -23,12 +25,12 @@ var current_player_index: int = 0
 var consecutive_pairs: int = 0
 var captured_this_turn: bool = false
 var current_roll: Dictionary = {}
-var has_exited_jail_this_turn: bool = false
-var has_broken_barrier_this_turn: bool = false  # ✅ Nueva
+var has_broken_barrier_this_turn: bool = false
 var players: Array = []
 var pending_move_piece: Piece = null
 var pending_move_steps: int = 0
 var bonus_came_from_dice: int = 0  # 1 o 2
+var double_next_roll: bool = false
 
 func setup(p_players: Array):
 	players = p_players
@@ -37,15 +39,22 @@ func start_turn(player_index: int):
 	current_player_index = player_index
 	current_state = State.IDLE
 	bonus_came_from_dice = 0
-	has_exited_jail_this_turn = false
 	has_broken_barrier_this_turn = false
 	captured_this_turn = false
 	current_roll = {}
+	# Tick status effects on all pieces
+	for player in players:
+		for piece in player.pieces:
+			piece._tick_status_effects()
 	turn_started.emit(player_index)
 
 func process_roll(dice_results: Array) -> bool:
 	var d1 = dice_results[0]
 	var d2 = dice_results[1]
+	if double_next_roll:
+		d1 = mini(d1 * 2, 12)
+		d2 = mini(d2 * 2, 12)
+		double_next_roll = false
 	var is_pair = d1 == d2
 	current_roll = {"dice1": d1, "dice2": d2, "pair": is_pair}
 	
@@ -106,29 +115,18 @@ func on_piece_moved(success: bool, captured: bool = false):
 			captured_this_turn = false
 			if bonus_came_from_dice == 1:
 				current_state = State.MOVE_DICE_2  # aún queda dado 2
-			else:
-				end_turn()
-
-func on_jail_exit():
-	has_exited_jail_this_turn = true
-
 func end_turn():
 	turn_ended.emit(current_player_index)
-	
 	var has_pair = current_roll.get("pair", false)
 	
 	var used_both_dice = current_state in [State.MOVE_DICE_2, State.BONUS_MOVE] or has_broken_barrier_this_turn
 	
-	if has_pair and used_both_dice and not has_exited_jail_this_turn and current_state != State.PENALTY_JAIL:
-		has_exited_jail_this_turn = false
+	if has_pair and used_both_dice and current_state != State.PENALTY_JAIL:
 		has_broken_barrier_this_turn = false
 		captured_this_turn = false
 		current_roll = {}
 		start_turn(current_player_index)
 		return
-	
-	if has_exited_jail_this_turn:
-		consecutive_pairs = 0 
 	
 	consecutive_pairs = 0
 	current_player_index = (current_player_index + 1) % players.size()
@@ -148,4 +146,4 @@ func request_break_barrier():
 	break_barrier_requested.emit()
 
 func can_click_piece() -> bool:
-	return current_state in [State.MOVE_DICE_1, State.MOVE_DICE_2, State.BONUS_MOVE, State.PENALTY_JAIL, State.BREAK_BARRIER_FIRST]
+	return current_state in [State.MOVE_DICE_1, State.MOVE_DICE_2, State.BONUS_MOVE, State.PENALTY_JAIL, State.BREAK_BARRIER_FIRST, State.CARD_TARGET]
