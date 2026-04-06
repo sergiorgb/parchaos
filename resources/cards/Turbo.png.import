@@ -2,20 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cgckto06mmw6f"
-path.s3tc="res://.godot/imported/cartas_lambert4_baseColor.jpg-1f348bba465868e59967f7b9d873c82f.s3tc.ctex"
+uid="uid://b1umnkjvco0j5"
+path.s3tc="res://.godot/imported/Turbo.png-044b132c848e9f1af518ae30e74aca94.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
-generator_parameters={
-"md5": "b69392302058cf3a4ffb4356e0eebf61"
-}
 
 [deps]
 
-source_file="res://resources/cartas_lambert4_baseColor.jpg"
-dest_files=["res://.godot/imported/cartas_lambert4_baseColor.jpg-1f348bba465868e59967f7b9d873c82f.s3tc.ctex"]
+source_file="res://resources/cards/Turbo.png"
+dest_files=["res://.godot/imported/Turbo.png-044b132c848e9f1af518ae30e74aca94.s3tc.ctex"]
 
 [params]
 

@@ -2,20 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dycuttrivbv3t"
-path.s3tc="res://.godot/imported/cartas_lambert6_baseColor.jpg-7fe84a5bc8126608fc76fef3c8b0693c.s3tc.ctex"
+uid="uid://cudpab30dwh04"
+path.s3tc="res://.godot/imported/Respaldo.png-544f97f2b268f18d74433cb1775dd5ec.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
-generator_parameters={
-"md5": "4c88b88400883ddbd4b75b4b0563c710"
-}
 
 [deps]
 
-source_file="res://resources/cartas_lambert6_baseColor.jpg"
-dest_files=["res://.godot/imported/cartas_lambert6_baseColor.jpg-7fe84a5bc8126608fc76fef3c8b0693c.s3tc.ctex"]
+source_file="res://resources/cards/Respaldo.png"
+dest_files=["res://.godot/imported/Respaldo.png-544f97f2b268f18d74433cb1775dd5ec.s3tc.ctex"]
 
 [params]
 

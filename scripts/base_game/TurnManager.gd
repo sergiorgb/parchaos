@@ -10,6 +10,7 @@ signal barrier_broken_continue()
 
 enum State {
 	IDLE,
+	DRAW_PHASE,
 	ROLLING,
 	BREAK_BARRIER_FIRST,
 	MOVE_DICE_1,
@@ -31,29 +32,27 @@ var pending_move_piece: Piece = null
 var pending_move_steps: int = 0
 var bonus_came_from_dice: int = 0  # 1 o 2
 var double_next_roll: bool = false
+var card_used_this_turn: bool = false
 
 func setup(p_players: Array):
 	players = p_players
 
 func start_turn(player_index: int):
 	current_player_index = player_index
-	current_state = State.IDLE
+	current_state = State.DRAW_PHASE
+	card_used_this_turn = false
 	bonus_came_from_dice = 0
 	has_broken_barrier_this_turn = false
 	captured_this_turn = false
 	current_roll = {}
-	# Tick status effects on all pieces
-	for player in players:
-		for piece in player.pieces:
-			piece._tick_status_effects()
 	turn_started.emit(player_index)
 
 func process_roll(dice_results: Array) -> bool:
 	var d1 = dice_results[0]
 	var d2 = dice_results[1]
 	if double_next_roll:
-		d1 = mini(d1 * 2, 12)
-		d2 = mini(d2 * 2, 12)
+		d1 = min(d1 * 2, 12)  
+		d2 = min(d2 * 2, 12)  
 		double_next_roll = false
 	var is_pair = d1 == d2
 	current_roll = {"dice1": d1, "dice2": d2, "pair": is_pair}
@@ -66,7 +65,6 @@ func process_roll(dice_results: Array) -> bool:
 	if not can_move_anyway and not can_exit_jail:
 		return false
 	
-	# Manejo de pares consecutivos (3 pares = penalización)
 	if is_pair:
 		consecutive_pairs += 1
 		if consecutive_pairs >= 3:
@@ -114,9 +112,13 @@ func on_piece_moved(success: bool, captured: bool = false):
 		State.BONUS_MOVE:
 			captured_this_turn = false
 			if bonus_came_from_dice == 1:
-				current_state = State.MOVE_DICE_2  # aún queda dado 2
+				current_state = State.MOVE_DICE_2 
+			else:  
+				end_turn()  
+
 func end_turn():
 	turn_ended.emit(current_player_index)
+
 	var has_pair = current_roll.get("pair", false)
 	
 	var used_both_dice = current_state in [State.MOVE_DICE_2, State.BONUS_MOVE] or has_broken_barrier_this_turn
@@ -126,21 +128,27 @@ func end_turn():
 		captured_this_turn = false
 		current_roll = {}
 		start_turn(current_player_index)
+		card_used_this_turn = true
 		return
+	
+	for piece in players[current_player_index].pieces:
+		piece.tick_status_effects() 
 	
 	consecutive_pairs = 0
 	current_player_index = (current_player_index + 1) % players.size()
 	start_turn(current_player_index)
 
 func get_current_steps() -> int:
+	var steps = 0
 	match current_state:
 		State.MOVE_DICE_1:
-			return current_roll.get("dice1", 0)
+			steps = current_roll.get("dice1", 0)
 		State.MOVE_DICE_2:
-			return current_roll.get("dice2", 0)
+			steps = current_roll.get("dice2", 0)
 		State.BONUS_MOVE:
-			return current_roll.get("bonus", 0)
-	return 0
+			steps = current_roll.get("bonus", 0)
+			
+	return steps
 
 func request_break_barrier():
 	break_barrier_requested.emit()

@@ -6,6 +6,7 @@ extends Node
 signal piece_moved(piece: Piece)
 signal capture_happened(captured_piece: Piece, bonus: int)
 signal victory_achieved(player: Player)
+signal movement_denied(message: String)
 
 var board: Board
 var players: Array = []
@@ -20,6 +21,7 @@ func can_move_piece(piece: Piece, steps: int, is_pair: bool = false) -> bool:
 	if piece.is_finished or piece.in_jail:
 		return false
 	if piece.is_frozen:
+		movement_denied.emit("¡Ficha congelada! No puede moverse.")
 		return false
 	
 	var target_pos = (piece.current_position + steps) % board.main_path.size()
@@ -81,8 +83,6 @@ func get_barrier_pieces_at(target_pos: int, player: Player) -> Array:
 
 func break_barrier(piece: Piece, steps: int):
 	var current_pos = piece.current_position
-	var next_pos = (current_pos + steps) % board.main_path.size()
-	
 	
 	var success = await piece._move(steps)
 	if not success:
@@ -104,10 +104,6 @@ func is_own_barrier_at_pos(piece: Piece, target_pos: int) -> bool:
 	
 	return count >= 2
 
-# Mantener la versión interna si quieres, pero actualizar referencias
-func _is_own_barrier_at_pos(piece: Piece, target_pos: int) -> bool:
-	return is_own_barrier_at_pos(piece, target_pos)
-
 func _is_enemy_barrier_at_pos(piece: Piece, target_pos: int) -> bool:
 	# Contar cuántas fichas enemigas están en target_pos
 	for player in players:
@@ -122,9 +118,6 @@ func _is_enemy_barrier_at_pos(piece: Piece, target_pos: int) -> bool:
 
 func _break_barrier_at(target_pos: int, player: Player):
 	# Romper la barrera: mover una de las fichas 1 paso adelante
-	# En Parqués real, el jugador elige qué ficha mover
-	# Por ahora, tomamos la primera ficha de la barrera y la movemos 1 paso
-	
 	for p in player.pieces:
 		if not p.in_jail and not p.is_finished and p.current_position == target_pos:
 			var next_pos = (target_pos + 1) % board.main_path.size()
@@ -164,20 +157,20 @@ func move_piece(piece: Piece, steps: int, is_pair: bool = false) -> bool:
 	
 	# Verificar si el destino es barrera propia y hay par
 	var target_pos = (piece.current_position + steps) % board.main_path.size()
-	var is_own_barrier = _is_own_barrier_at_pos(piece, target_pos)
+	var own_barrier = is_own_barrier_at_pos(piece, target_pos)  # ✅ Usar la función pública
 	
-	if is_own_barrier and is_pair:
+	if own_barrier and is_pair:
 		# No mover aún, primero hay que romper barrera
 		return false  # Esto hará que GameManager entre en BREAK_BARRIER
 	
-	if not piece.in_home_path:  # ← solo si NO está en home path
+	if not piece.in_home_path:
 		_check_stacking(piece.current_position)
 	
 	if not await piece._move(steps):
 		return false
 	
-	_check_capture(piece)  # captura primero — mueve enemigo a cárcel
-	await get_tree().process_frame  # esperar un frame
+	_check_capture(piece)
+	await get_tree().process_frame
 	_check_stacking(piece.current_position)
 	
 	return true
@@ -189,8 +182,6 @@ func _check_capture(piece: Piece):
 	var enemies = board._get_enemies_at(piece.current_position, piece.player.player_id)
 	
 	for enemy in enemies:
-		if enemy.is_shielded:
-			continue
 		if enemy.current_position == enemy.player.start_index:
 			continue
 		if enemy.current_position == enemy.player.home_entry:
@@ -198,6 +189,9 @@ func _check_capture(piece: Piece):
 		_resolve_capture(enemy)
 
 func _resolve_capture(enemy: Piece):
+	if enemy.is_shielded:
+		movement_denied.emit("¡Ataque bloqueado por Escudo!")
+		return
 	enemy.in_jail = true
 	enemy.in_home_path = false
 	enemy.home_route = 0
@@ -246,7 +240,7 @@ func needs_break_barrier(piece: Piece, steps: int, is_pair: bool) -> bool:
 		return false
 	
 	var target_pos = (piece.current_position + steps) % board.main_path.size()
-	return _is_own_barrier_at_pos(piece, target_pos)
+	return is_own_barrier_at_pos(piece, target_pos)  # ✅ Usar la función pública
 
 func reset_capture_flag():
 	captured_this_turn = false

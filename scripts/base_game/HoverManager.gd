@@ -36,15 +36,13 @@ func on_piece_hovered(piece: Piece):
 			_show_ghost(piece, board.home_paths[piece.color][target].global_position)
 		return
 	
-	# Verificar si debería entrar al home path
 	var steps_to_entry = piece._steps_to_entry(piece.current_position)
-	if steps >= steps_to_entry:
+	if steps >= steps_to_entry and piece.has_completed_lap:
 		var remaining = steps - steps_to_entry
 		if remaining < board.home_paths[piece.color].size():
 			_show_ghost(piece, board.home_paths[piece.color][remaining].global_position)
 		return
 	
-	print("pos: ", piece.current_position, " | steps: ", steps, " | steps_to_entry: ", steps_to_entry, " | target: ", (piece.current_position + steps) % board.main_path.size())
 	var target_pos = (piece.current_position + steps) % board.main_path.size()
 	_show_ghost(piece, board.main_path[target_pos].global_position)
 
@@ -75,7 +73,7 @@ func _show_ghost(piece: Piece, target_pos: Vector3):
 				var dup = mat.duplicate()
 				dup.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 				dup.albedo_color.a = 0.6
-				dup.render_priority = 1  # ← agregar esto
+				dup.render_priority = 1 
 				dup.no_depth_test = true
 				mesh.set_surface_override_material(i, dup)
 	

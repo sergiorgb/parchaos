@@ -6,25 +6,28 @@ extends Node
 @onready var status_label: Label = $"../UI/GameUI/StatusLabel" 
 
 var Piece = preload("res://scenes/piece.tscn")
+var card_scene = preload("res://scenes/card_3d.tscn")
 
+var hand_display: HandDisplay
 var turn_manager: TurnManager
 var movement_manager: MovementManager
 var dice_manager: DiceManager
 var camera_controller: CameraController
 var hover_manager: HoverManager
 var card_manager: CardManager
-var square_effects: SquareEffects
 var camera: Camera3D
 var players = []
 var board = null
 var game_over: bool = false
 
-
-var card_label: Label
+var pending_card_screen_pos: Vector2 = Vector2.ZERO
+var deck_pile_cards: Array = []
+var discard_pile_top: Card3D = null
 var pending_card_index: int = -1
 var pending_card_type: int = -1
 var roll_cooldown: bool = false
 var jail_roll_attempts: int = 0
+var is_ready: bool = false
 const MAX_JAIL_ROLLS = 3
 const ROLL_COOLDOWN_TIME = 1.5
 
@@ -51,12 +54,16 @@ func _ready():
 	_setup_players()
 	board.set_players(players)
 	card_manager.setup(players.size())
-	
 	_setup_card_ui()
-	_mark_special_squares()
+	_setup_deck_display()
+	
+	for i in range(players.size()):
+		card_manager.draw_card(i)
+		card_manager.draw_card(i)
 	
 	turn_manager.start_turn(0)
 	camera_controller.move_to_player(0, true)
+	is_ready = true
 
 func _setup_managers():
 	camera_controller = CameraController.new()
@@ -90,20 +97,26 @@ func _setup_managers():
 	
 	card_manager = CardManager.new()
 	add_child(card_manager)
-	
-	square_effects = SquareEffects.new()
-	add_child(square_effects)
-	square_effects.setup(board, card_manager)
 
 func _setup_card_ui():
-	card_label = Label.new()
-	card_label.name = "CardLabel"
-	card_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	card_label.anchors_preset = Control.PRESET_BOTTOM_WIDE
-	card_label.offset_top = -60
-	card_label.offset_bottom = -10
-	card_label.add_theme_font_size_override("font_size", 18)
-	$"../UI/GameUI".add_child(card_label)
+	hand_display = HandDisplay.new()
+	hand_display.name = "HandDisplay"
+	$"../UI/GameUI".add_child(hand_display)
+	hand_display.setup()
+	hand_display.card_clicked.connect(_on_hand_card_clicked)
+	hand_display.hide_hand()
+	
+	hand_display.card_clicked.connect(_on_hand_card_clicked)
+	hand_display.hide_hand()
+
+func _on_hand_card_clicked(card_index: int, screen_position: Vector2):
+	if turn_manager.current_state not in [TurnManager.State.IDLE, TurnManager.State.DRAW_PHASE]:
+		return
+	if turn_manager.card_used_this_turn:
+		return
+	
+	pending_card_screen_pos = screen_position
+	_select_card(card_index)
 
 func _setup_players():
 	for data in PLAYER_DATA:
@@ -129,42 +142,126 @@ func _spawn_pieces(player):
 		player.pieces.append(piece)
 		piece._go_to_jail()
 
-
+func _setup_deck_display():
+	var deck_pos = Vector3(0.95, 0.03, -0.1)
+	var discard_pos = Vector3(0.95, 0.03, 0.1)
+	
+	for i in range(35):
+		var card = card_scene.instantiate()
+		card.card_type = -1
+		card.position = deck_pos + Vector3(0, i * 0.002, 0)
+		get_parent().add_child(card)
+		deck_pile_cards.append(card)
+	
+	discard_pile_top = card_scene.instantiate()
+	discard_pile_top.card_type = -1
+	discard_pile_top.position = discard_pos
+	discard_pile_top.visible = false
+	get_parent().add_child(discard_pile_top)
 
 func _input(event):
-	if game_over:
+	if game_over or not is_ready:
 		return
 	
-	if event.is_action_pressed("ui_accept") and turn_manager.current_state == TurnManager.State.IDLE and not roll_cooldown:
-		_roll_dice()
+	if event is InputEventKey and (not event.pressed or event.echo):
 		return
 	
-	if not (event is InputEventKey and event.pressed and not event.echo):
+	var key = event.keycode if event is InputEventKey else -1
+	
+	if turn_manager.current_state == TurnManager.State.DRAW_PHASE:
+		if event.is_action_pressed("ui_accept"):
+			turn_manager.current_state = TurnManager.State.IDLE
+			_roll_dice()
+			return
+		elif key == KEY_R:
+			_draw_card_phase()
+			return
+	
+	if turn_manager.current_state == TurnManager.State.IDLE:
+		if event.is_action_pressed("ui_accept") and not roll_cooldown:
+			_roll_dice()
+			return
+	
+	if turn_manager.current_state == TurnManager.State.CARD_TARGET:
+		if key == KEY_ESCAPE:
+			_cancel_card()
+			return
+	
+func _draw_card_phase():
+	var player_idx = turn_manager.current_player_index
+	
+	if card_manager.get_hand(player_idx).size() >= CardManager.MAX_HAND_SIZE:
+		status_label.text = "Mano llena (máx 5 cartas)"
+		await get_tree().create_timer(1.0).timeout
+		turn_manager.current_state = TurnManager.State.IDLE
+		status_label.text = "Mano llena — [Espacio] para lanzar dados"
 		return
 	
-	var key = event.physical_keycode
-	
-	match turn_manager.current_state:
-		TurnManager.State.IDLE:
-			if key == KEY_Q:
-				_try_open_cards()
-		TurnManager.State.CARD_SELECT:
-			if key == KEY_ESCAPE or key == KEY_Q:
-				_cancel_card()
-			elif key == KEY_1:
-				_select_card(0)
-			elif key == KEY_2:
-				_select_card(1)
-			elif key == KEY_3:
-				_select_card(2)
-		TurnManager.State.CARD_TARGET:
-			if key == KEY_ESCAPE:
-				_cancel_card()
+	if card_manager.deck.is_empty():
+		discard_pile_top.visible = false
+		await _animate_deck_refill()
+		# re-mostrar tope del mazo
+		if deck_pile_cards.size() > 0:
+			deck_pile_cards[0].visible = true
 
+	var card_type = card_manager.draw_card(player_idx)
+	
+	var animated_card = card_scene.instantiate()
+	animated_card.card_type = -1
+	get_parent().add_child(animated_card)
+	
+	var deck_world_pos = deck_pile_cards[card_manager.get_deck_size()].global_position \
+		if card_manager.get_deck_size() < deck_pile_cards.size() \
+		else Vector3(0.95, 0.03, -0.1)
+	animated_card.global_position = deck_world_pos
+	
+	var hand_index = card_manager.get_hand(player_idx).size() - 1  # Última carta añadida
+	var screen_pos = _get_hand_card_screen_position(hand_index)
+	var target_world_pos = _screen_to_world_position(screen_pos)
+	
+	var tween = create_tween()
+	tween.tween_property(animated_card, "global_position", target_world_pos, 0.4) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(animated_card, "rotation:y", PI, 0.4)  # Gira mientras vuela
+	
+	await tween.finished
+	
+	animated_card.queue_free()
+	_update_card_display()
+	
+	var card_name = card_manager.get_card_name(card_type)
+	var card_icon = card_manager.get_card_icon(card_type)
+	status_label.text = "Robaste: " + card_icon + " " + card_name
+	await get_tree().create_timer(1.0).timeout
+	status_label.text = "Carta robada — Turno terminado"
+	await get_tree().create_timer(0.5).timeout
+	turn_manager.end_turn()
 
+func _get_hand_card_screen_position(card_index: int) -> Vector2:
+	var vp = get_tree().root.get_viewport().get_visible_rect().size
+	var hand = card_manager.get_hand(turn_manager.current_player_index)
+	var count = hand.size()
+	var total_width = count * (HandDisplay.CARD_SIZE.x + 10) - 10
+	var start_x = vp.x / 2.0 - total_width / 2.0
+	var card_x = start_x + card_index * (HandDisplay.CARD_SIZE.x + 10) + HandDisplay.CARD_SIZE.x / 2
+	var card_y = vp.y - HandDisplay.CARD_SIZE.y / 1.75
+	return Vector2(card_x, card_y)
+
+func _screen_to_world_position(screen_pos: Vector2) -> Vector3:
+	var camera = get_viewport().get_camera_3d()
+	var ray_origin = camera.project_ray_origin(screen_pos)
+	var ray_dir = camera.project_ray_normal(screen_pos)
+	
+	var plane = Plane(Vector3.UP, 0.5)
+	var intersection = plane.intersects_ray(ray_origin, ray_dir)
+	
+	if intersection:
+		return intersection
+	return Vector3.ZERO
 
 func _roll_dice():
 	roll_cooldown = true
+	hand_display.hide_hand()
 	status_label.text = "Lanzando dados..."
 	status_label.visible = true
 	dice_manager.roll_for_player(turn_manager.current_player_index)
@@ -216,14 +313,10 @@ func _on_dice_stopped(results: Array):
 	
 	_start_roll_cooldown()
 
-
-
 func _on_piece_clicked(piece_ref: Piece):
-
 	if turn_manager.current_state == TurnManager.State.CARD_TARGET:
 		_handle_card_target(piece_ref)
 		return
-	
 
 	if piece_ref.player != players[turn_manager.current_player_index]:
 		status_label.text = "No es tu turno"
@@ -237,6 +330,10 @@ func _on_piece_clicked(piece_ref: Piece):
 		_handle_jail_exit(piece_ref)
 		return
 	
+	if piece_ref.is_frozen:
+		status_label.text = "¡Esa ficha está congelada!"
+		return
+	
 	if turn_manager.current_state == TurnManager.State.BREAK_BARRIER_FIRST:
 		_handle_break_barrier_first(piece_ref)
 		return
@@ -248,10 +345,7 @@ func _on_piece_clicked(piece_ref: Piece):
 	elif turn_manager.current_state == TurnManager.State.PENALTY_JAIL:
 		_execute_penalty(piece_ref)
 
-
-
 func _handle_jail_exit(piece: Piece):
-	var d1 = turn_manager.current_roll.get("dice1", 0)
 	var is_pair = turn_manager.current_roll.get("pair", false)
 	
 	if not is_pair:
@@ -261,10 +355,6 @@ func _handle_jail_exit(piece: Piece):
 	if turn_manager.current_state not in [TurnManager.State.MOVE_DICE_1, TurnManager.State.MOVE_DICE_2]:
 		status_label.text = "Accion no permitida ahora"
 		return
-	
-	var is_super_pair = d1 == 1 or d1 == 6
-	var max_pieces_to_take = 2 if is_super_pair else 1
-	var pieces_taken = 0
 	
 	var pieces_at_start = 0
 	for p in piece.player.pieces:
@@ -277,15 +367,6 @@ func _handle_jail_exit(piece: Piece):
 	
 	piece.jail_exited.connect(_on_jail_exited, CONNECT_ONE_SHOT)
 	piece._leave_jail()
-	pieces_taken += 1
-	pieces_at_start += 1
-	
-	if max_pieces_to_take > 1 and pieces_at_start < 2:
-		for other_piece in piece.player.pieces:
-			if other_piece != piece and other_piece.in_jail:
-				other_piece.jail_exited.connect(_on_secondary_jail_exited, CONNECT_ONE_SHOT)
-				other_piece._leave_jail()
-				break
 
 func _on_secondary_jail_exited(_piece: Piece):
 	movement_manager._check_capture(_piece)
@@ -299,23 +380,15 @@ func _on_jail_exited(_piece: Piece):
 	movement_manager.reset_capture_flag()
 	
 	if captured:
-		_draw_card_for_player(turn_manager.current_player_index)
-	
-	turn_manager.on_piece_moved(true, captured)
-	
-	if turn_manager.current_state == TurnManager.State.MOVE_DICE_2:
-		if not _has_any_valid_move():
-			status_label.text = "Sin movimientos posibles con dado 2. Pasando turno..."
-			await get_tree().create_timer(1.5).timeout
-			turn_manager.end_turn()
-			return
-		status_label.text = "Fichas liberadas! Dado 1: " + str(turn_manager.current_roll.get("dice1", 0)) + " | Dado 2: " + str(turn_manager.current_roll.get("dice2", 0)) + " | Mueve con dado 2"
-	elif turn_manager.current_state == TurnManager.State.IDLE:
-		pass
-	elif turn_manager.current_state == TurnManager.State.BONUS_MOVE:
-		status_label.text = "Fichas liberadas y captura! Bonus!"
-
-
+		turn_manager.current_roll["bonus"] = 10
+		turn_manager.current_state = TurnManager.State.BONUS_MOVE
+		turn_manager.bonus_came_from_dice = 0 
+		turn_manager.bonus_move_available.emit(10)
+		status_label.text = "¡Captura! Bonus de 10 pasos"
+	else:
+		status_label.text = "Ficha liberada! Turno terminado."
+		await get_tree().create_timer(0.8).timeout
+		turn_manager.end_turn()
 
 func _handle_break_barrier_first(piece: Piece):
 	var barrier_pieces = movement_manager.get_barrier_pieces_at(piece.current_position, piece.player)
@@ -332,12 +405,9 @@ func _handle_break_barrier_first(piece: Piece):
 	
 	status_label.text = "Barrera rota! Ahora mueve " + str(turn_manager.current_roll.get("dice2", 0)) + " pasos con otra ficha"
 
-
-
 func _execute_move(piece: Piece, steps: int):
 	var is_pair = turn_manager.current_roll.get("pair", false)
 	
-
 	var is_own_barrier = false
 	if not piece.in_home_path:
 		var steps_to_entry = piece._steps_to_entry(piece.current_position)
@@ -364,11 +434,6 @@ func _execute_move(piece: Piece, steps: int):
 	var captured = movement_manager.captured_this_turn 
 	movement_manager.reset_capture_flag()
 	movement_manager.check_victory(piece.player)
-	
-	if captured:
-		_draw_card_for_player(turn_manager.current_player_index)
-	
-	await _apply_square_effects(piece)
 	
 	turn_manager.on_piece_moved(true, captured)
 	
@@ -402,50 +467,27 @@ func _has_any_valid_move() -> bool:
 		return false
 	
 	for piece in current_player.pieces:
-		if not piece.in_jail and not piece.is_finished:
+		if not piece.in_jail and not piece.is_finished and not piece.is_frozen:
 			if movement_manager.can_move_piece(piece, steps):
 				return true
 	
 	return false
 
-
-
-func _apply_square_effects(piece: Piece):
-	var result = square_effects.apply_effect(piece)
-	if result.message == "":
-		return
-	
-	status_label.text = result.message
-	await get_tree().create_timer(1.5).timeout
-	
-	match result.type:
-		SquareEffects.SquareType.SPEED_BOOST:
-			if movement_manager.can_move_piece(piece, 3):
-				await movement_manager.move_piece(piece, 3, false)
-				movement_manager._check_stacking(piece.current_position)
-		SquareEffects.SquareType.TRAP:
-			await piece._move_backward(3)
-			movement_manager._check_stacking(piece.current_position)
-	
-	_update_card_display()
-
-
-
 func _try_open_cards():
 	var hand = card_manager.get_hand(turn_manager.current_player_index)
 	if hand.is_empty():
-		status_label.text = "No tienes cartas — [Espacio] para lanzar"
+		status_label.text = "No tienes cartas"
 		return
 	turn_manager.current_state = TurnManager.State.CARD_SELECT
 	_show_card_selection()
 
 func _show_card_selection():
 	var hand = card_manager.get_hand(turn_manager.current_player_index)
-	var text = "ELIGE CARTA:  "
+	var text = "ELIGE CARTA: "
 	for i in range(hand.size()):
 		var info = CardManager.CARD_INFO[hand[i]]
 		text += "[" + str(i + 1) + "] " + info["icon"] + " " + info["name"] + "  "
-	text += " | [Esc] Cancelar"
+	text += "| [Esc] Cancelar"
 	status_label.text = text
 
 func _select_card(card_index: int):
@@ -453,6 +495,9 @@ func _select_card(card_index: int):
 	if card_index < 0 or card_index >= hand.size():
 		status_label.text = "Carta inválida"
 		return
+	
+	var card_type = card_manager.use_card(turn_manager.current_player_index, pending_card_index) 
+	_update_discard_display(card_type)
 	
 	pending_card_index = card_index
 	pending_card_type = hand[card_index]
@@ -464,67 +509,91 @@ func _select_card(card_index: int):
 		"own":
 			turn_manager.current_state = TurnManager.State.CARD_TARGET
 			status_label.text = CardManager.CARD_INFO[pending_card_type]["icon"] + " Selecciona una de tus fichas activas"
+			hand_display.hide_hand()  # ← agregá
 		"own_jail":
 			turn_manager.current_state = TurnManager.State.CARD_TARGET
 			status_label.text = "FUGA: Selecciona una ficha tuya en la carcel"
+			hand_display.hide_hand()  # ← agregá
 		"enemy":
 			turn_manager.current_state = TurnManager.State.CARD_TARGET
 			status_label.text = CardManager.CARD_INFO[pending_card_type]["icon"] + " Selecciona una ficha enemiga"
-
-func _cancel_card():
-	pending_card_index = -1
-	pending_card_type = -1
-	turn_manager.current_state = TurnManager.State.IDLE
-	status_label.text = "Turno de " + players[turn_manager.current_player_index].display_name.to_upper() + " — [Espacio] lanzar | [Q] cartas"
-	_update_card_display()
+			hand_display.hide_hand() 
+		"enemy_any":
+			turn_manager.current_state = TurnManager.State.CARD_TARGET
+			status_label.text = "[L] Selecciona una ficha enemiga"
+			hand_display.hide_hand()
 
 func _apply_no_target_card():
 	var player_idx = turn_manager.current_player_index
-	card_manager.use_card(player_idx, pending_card_index)
+	var card_type = card_manager.use_card(player_idx, pending_card_index)
 	
-	match pending_card_type:
-		CardManager.CardType.DOUBLE:
-			turn_manager.double_next_roll = true
-			status_label.text = "DOBLE: Tu proximo lanzamiento sera DOBLE!"
-		CardManager.CardType.THIEF:
-			var stolen = false
-			for i in range(players.size()):
-				if i != player_idx and card_manager.get_hand(i).size() > 0:
-					var card = card_manager.steal_random_card(i, player_idx)
-					if card != -1:
-						status_label.text = "LADRON: Robaste " + card_manager.get_card_name(card) + " de " + players[i].display_name + "!"
-						stolen = true
-						break
-			if not stolen:
-				status_label.text = "LADRON: Nadie tiene cartas para robar..."
+	_update_discard_display(card_type)
+	
+	if pending_card_type == CardManager.CardType.DOUBLE:
+		turn_manager.double_next_roll = true
+		status_label.text = "DOBLE: Tu proximo lanzamiento sera DOBLE!"
 	
 	pending_card_index = -1
 	pending_card_type = -1
 	turn_manager.current_state = TurnManager.State.IDLE
+	turn_manager.card_used_this_turn = true
 	_update_card_display()
-	await get_tree().create_timer(1.5).timeout
-	status_label.text = "Turno de " + players[player_idx].display_name.to_upper() + " — [Espacio] lanzar | [Q] cartas"
+
+func _update_discard_display(card_type: int):
+	if discard_pile_top:
+		discard_pile_top.card_type = card_type
+		discard_pile_top.visible = true
+	
+
+func _animate_card_to_discard(card_type: int, from_screen_pos: Vector2):
+	var animated_card = card_scene.instantiate()
+	animated_card.card_type = card_type
+	get_parent().add_child(animated_card)
+	
+	var start_world_pos = _screen_to_world_position(from_screen_pos)
+	animated_card.global_position = start_world_pos
+	
+	var target_pos = discard_pile_top.global_position + Vector3(0, 0.002 * card_manager.discard.size(), 0)
+	
+	var tween = create_tween()
+	tween.tween_property(animated_card, "global_position", target_pos, 0.4) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(animated_card, "rotation:y", 0, 0.4)  # Enderezar
+	
+	await tween.finished
+	
+	animated_card.queue_free()
+	_update_discard_display(card_type)
+
+func _cancel_card():
+	turn_manager.current_state = TurnManager.State.IDLE
+	status_label.text = "Turno de " + players[turn_manager.current_player_index].display_name.to_upper() + " — [Espacio] lanzar"
 
 func _handle_card_target(piece: Piece):
 	var player = players[turn_manager.current_player_index]
 	var target = card_manager.get_card_target(pending_card_type)
 	
-
 	match target:
 		"own":
 			if piece.player != player or piece.in_jail or piece.is_finished:
 				status_label.text = "Selecciona una ficha tuya activa"
+				hand_display.hide_hand()
 				return
 		"own_jail":
 			if piece.player != player or not piece.in_jail:
 				status_label.text = "Selecciona una ficha tuya en la cárcel"
+				hand_display.hide_hand()
 				return
 		"enemy":
 			if piece.player == player or piece.in_jail or piece.is_finished:
 				status_label.text = "Selecciona una ficha enemiga activa"
+				hand_display.hide_hand()
+				return
+		"enemy_any":
+			if piece.player == player:
+				status_label.text = "Selecciona una ficha enemiga"
 				return
 	
-
 	var card_type = pending_card_type
 	card_manager.use_card(turn_manager.current_player_index, pending_card_index)
 	pending_card_index = -1
@@ -532,72 +601,62 @@ func _handle_card_target(piece: Piece):
 	
 	match card_type:
 		CardManager.CardType.TURBO:
-			if not movement_manager.can_move_piece(piece, 5):
-				status_label.text = "TURBO: No puede moverse 5 pasos -- carta gastada"
-			else:
+			if movement_manager.can_move_piece(piece, 5):
 				status_label.text = "TURBO: +5 pasos!"
 				await movement_manager.move_piece(piece, 5, false)
 				var captured = movement_manager.captured_this_turn
 				movement_manager.reset_capture_flag()
-				if captured:
-					_draw_card_for_player(turn_manager.current_player_index)
-				await _apply_square_effects(piece)
-		
+				movement_manager._check_stacking(piece.current_position)
+			else:
+				status_label.text = "TURBO: No puede moverse -- carta gastada"
 		CardManager.CardType.SHIELD:
-			piece._apply_shield(2)
+			piece.apply_shield(2)
 			status_label.text = "ESCUDO: Activado por 2 turnos!"
-		
 		CardManager.CardType.JAILBREAK:
-
 			var pieces_at_start = 0
 			for p in piece.player.pieces:
 				if not p.in_jail and not p.is_finished and p.current_position == piece.start_index:
 					pieces_at_start += 1
 			if pieces_at_start >= 2:
-				status_label.text = "FUGA: No hay espacio en la salida -- carta gastada"
+				status_label.text = "FUGA: No hay espacio -- carta gastada"
 			else:
 				status_label.text = "FUGA: Exitosa!"
-				piece.jail_exited.connect(_on_jail_exited_card, CONNECT_ONE_SHOT)
+				piece.jail_exited.connect(_on_jailbreak_card_exited, CONNECT_ONE_SHOT)  # ← callback propio
 				piece._leave_jail()
-		
 		CardManager.CardType.SABOTAGE:
 			status_label.text = "SABOTAJE: Retrocede 4 pasos"
 			await piece._move_backward(4)
 			movement_manager._check_stacking(piece.current_position)
-		
 		CardManager.CardType.FREEZE:
-			piece._apply_freeze(1)
+			piece.apply_freeze(1)
 			status_label.text = "HIELO: Ficha congelada por 1 turno!"
+		CardManager.CardType.THIEF:
+			var stolen = card_manager.steal_random_card(piece.player.player_id, turn_manager.current_player_index)
+			if stolen != -1:
+				status_label.text = "LADRON: Robaste " + card_manager.get_card_name(stolen) + " a " + piece.player.display_name + "!"
+			else:
+				status_label.text = "LADRON: Ese jugador no tiene cartas..."
 	
 	turn_manager.current_state = TurnManager.State.IDLE
+	turn_manager.card_used_this_turn = true 
 	_update_card_display()
 	await get_tree().create_timer(1.2).timeout
 	status_label.text = "Turno de " + player.display_name.to_upper() + " — [Espacio] lanzar | [Q] cartas"
+	hand_display.hide_hand()
 
-func _on_jail_exited_card(_piece: Piece):
-	movement_manager._check_capture(_piece)
-	movement_manager._check_stacking(_piece.current_position)
+func _on_jailbreak_card_exited(piece: Piece):
+	movement_manager._check_capture(piece)
+	movement_manager._check_stacking(piece.current_position)
 	movement_manager.reset_capture_flag()
-
-func _draw_card_for_player(player_index: int):
-	var card = card_manager.draw_card(player_index)
-	if card != -1:
-		card_label.text += "  |  +" + card_manager.get_card_icon(card) + " " + card_manager.get_card_name(card)
 
 func _update_card_display():
 	var hand = card_manager.get_hand(turn_manager.current_player_index)
-	if hand.is_empty():
-		card_label.text = "[Q] Cartas: ninguna"
-		return
-	var text = "[Q] Cartas: "
-	for i in range(hand.size()):
-		var info = CardManager.CARD_INFO[hand[i]]
-		text += info["icon"] + info["name"]
-		if i < hand.size() - 1:
-			text += " | "
-	card_label.text = text
-
-
+	hand_display.show_hand(hand)
+	if turn_manager.current_state in [TurnManager.State.IDLE, TurnManager.State.DRAW_PHASE] \
+	   and not turn_manager.card_used_this_turn:
+		hand_display.reveal_hand()
+	else:
+		hand_display.hide_hand()
 
 func _execute_penalty(piece: Piece):
 	piece._go_to_jail()
@@ -634,7 +693,12 @@ func _on_turn_started(player_index: int):
 	roll_cooldown = false
 	if game_over:
 		return
-	status_label.text = "Turno de " + players[player_index].display_name.to_upper() + " — [Espacio] lanzar | [Q] cartas"
+	
+	if turn_manager.current_state == TurnManager.State.DRAW_PHASE:
+		status_label.text = "Turno de " + players[player_index].display_name.to_upper() + " — [R] Robar carta | [Espacio] Lanzar dados"
+	else:
+		status_label.text = "Turno de " + players[player_index].display_name.to_upper() + " — [Espacio] lanzar"
+	
 	_update_card_display()
 
 func _on_turn_ended(_player_index: int):
@@ -652,29 +716,20 @@ func _start_roll_cooldown():
 	await get_tree().create_timer(ROLL_COOLDOWN_TIME).timeout
 	roll_cooldown = false
 
-func _mark_special_squares():
-	for idx in SquareEffects.CARD_SQUARES:
-		_place_marker(idx, Color(0.2, 0.6, 1.0))
-	for idx in SquareEffects.SPEED_BOOST_SQUARES:
-		_place_marker(idx, Color(1.0, 0.8, 0.0))
-	for idx in SquareEffects.TRAP_SQUARES:
-		_place_marker(idx, Color(1.0, 0.2, 0.2))
-
-func _place_marker(square_index: int, color: Color):
-	var mesh_instance = MeshInstance3D.new()
-	var cylinder = CylinderMesh.new()
-	cylinder.top_radius = 0.03
-	cylinder.bottom_radius = 0.03
-	cylinder.height = 0.002
-	mesh_instance.mesh = cylinder
+func _animate_deck_refill():
+	# Animar las cartas del descarte volando de vuelta al mazo
+	var discard_pos = Vector3(0.95, 0.03, 0.1)
+	var deck_pos = Vector3(0.95, 0.03, -0.1)
 	
-	var mat = StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.emission_enabled = true
-	mat.emission = color
-	mat.emission_energy_multiplier = 0.8
-	mesh_instance.material_override = mat
+	var temp_card = card_scene.instantiate()
+	temp_card.card_type = -1  # respaldo
+	get_parent().add_child(temp_card)
+	temp_card.global_position = discard_pos + Vector3(0, 0.01, 0)
 	
-	var pos = board.main_path[square_index].global_position
-	mesh_instance.global_position = Vector3(pos.x, 0.012, pos.z)
-	add_child(mesh_instance)
+	var tween = create_tween()
+	tween.tween_property(temp_card, "global_position", deck_pos + Vector3(0, 0.07, 0), 0.3)\
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	tween.parallel().tween_property(temp_card, "rotation:y", PI, 0.3)
+	tween.tween_callback(temp_card.queue_free)
+	
+	await tween.finished

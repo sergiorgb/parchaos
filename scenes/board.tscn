@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cr07kk1t6vnkv"]
 
 [ext_resource type="PackedScene" uid="uid://dmpm1ftm5y3p0" path="res://resources/mesa.glb" id="1_bw3vb"]
-[ext_resource type="Script" uid="uid://dsau7k4mm0xhf" path="res://scripts/base_game/board.gd" id="1_tx6nw"]
+[ext_resource type="Script" uid="uid://dsau7k4mm0xhf" path="res://scripts/base_game/Board.gd" id="1_tx6nw"]
 
 [node name="Board" type="Node3D" unique_id=1352643309]
 script = ExtResource("1_tx6nw")

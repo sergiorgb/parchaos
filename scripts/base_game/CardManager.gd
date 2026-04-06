@@ -18,15 +18,16 @@ const CARD_INFO = {
 	CardType.SABOTAGE:  {"name": "Sabotaje",  "icon": "[S]", "desc": "Retrocede enemigo 4 pasos",         "target": "enemy"},
 	CardType.FREEZE:    {"name": "Hielo",     "icon": "[H]", "desc": "Congela ficha enemiga 1 turno",     "target": "enemy"},
 	CardType.DOUBLE:    {"name": "Doble",     "icon": "[D]", "desc": "Duplica siguiente lanzamiento",     "target": "none"},
-	CardType.THIEF:     {"name": "Ladron",    "icon": "[L]", "desc": "Roba carta a otro jugador",         "target": "none"},
+	CardType.THIEF:     {"name": "Ladron",    "icon": "[L]", "desc": "Roba carta a otro jugador",         "target": "enemy_any"},
 }	 
 
 signal card_drawn(player_index: int, card_type: int)
 signal card_used(player_index: int, card_type: int)
 
-var deck: Array = []
+var deck: Array = []        # pila de robo
+var discard: Array = []     # pila de descarte
 var player_hands: Dictionary = {}
-const MAX_HAND_SIZE = 3
+const MAX_HAND_SIZE = 5
 
 func setup(player_count: int):
 	for i in range(player_count):
@@ -34,11 +35,15 @@ func setup(player_count: int):
 	_fill_deck()
 
 func _fill_deck():
-	deck.clear()
-	for type in CardType.values():
-		for i in range(4):
-			deck.append(type)
-	deck.shuffle()
+	if deck.is_empty() and not discard.is_empty():
+		deck.append_array(discard)
+		discard.clear()
+		deck.shuffle()
+	elif deck.is_empty():
+		for type in CardType.values():
+			for i in range(4):
+				deck.append(type)
+		deck.shuffle()
 
 func draw_card(player_index: int) -> int:
 	if player_hands[player_index].size() >= MAX_HAND_SIZE:
@@ -56,8 +61,10 @@ func use_card(player_index: int, card_index: int) -> int:
 		return -1
 	var card = hand[card_index]
 	hand.remove_at(card_index)
+	discard.push_back(card)
 	card_used.emit(player_index, card)
 	return card
+
 
 func get_hand(player_index: int) -> Array:
 	return player_hands.get(player_index, [])
@@ -85,3 +92,11 @@ func steal_random_card(from_player: int, to_player: int) -> int:
 	from_hand.remove_at(idx)
 	player_hands[to_player].append(card)
 	return card
+
+func get_deck_size() -> int:
+	return deck.size()
+
+func get_discard_top() -> int:
+	if discard.is_empty():
+		return -1
+	return discard.back()
