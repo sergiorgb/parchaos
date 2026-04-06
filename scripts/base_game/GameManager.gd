@@ -368,11 +368,6 @@ func _handle_jail_exit(piece: Piece):
 	piece.jail_exited.connect(_on_jail_exited, CONNECT_ONE_SHOT)
 	piece._leave_jail()
 
-func _on_secondary_jail_exited(_piece: Piece):
-	movement_manager._check_capture(_piece)
-	movement_manager._check_stacking(_piece.current_position)
-	movement_manager.reset_capture_flag()
-
 func _on_jail_exited(_piece: Piece):
 	movement_manager._check_capture(_piece)
 	movement_manager._check_stacking(_piece.current_position)
@@ -382,7 +377,7 @@ func _on_jail_exited(_piece: Piece):
 	if captured:
 		turn_manager.current_roll["bonus"] = 10
 		turn_manager.current_state = TurnManager.State.BONUS_MOVE
-		turn_manager.bonus_came_from_dice = 0 
+		turn_manager.bonus_came_from_dice = 2
 		turn_manager.bonus_move_available.emit(10)
 		status_label.text = "¡Captura! Bonus de 10 pasos"
 	else:
@@ -496,9 +491,6 @@ func _select_card(card_index: int):
 		status_label.text = "Carta inválida"
 		return
 	
-	var card_type = card_manager.use_card(turn_manager.current_player_index, pending_card_index) 
-	_update_discard_display(card_type)
-	
 	pending_card_index = card_index
 	pending_card_type = hand[card_index]
 	var target = card_manager.get_card_target(pending_card_type)
@@ -604,9 +596,14 @@ func _handle_card_target(piece: Piece):
 			if movement_manager.can_move_piece(piece, 5):
 				status_label.text = "TURBO: +5 pasos!"
 				await movement_manager.move_piece(piece, 5, false)
-				var captured = movement_manager.captured_this_turn
-				movement_manager.reset_capture_flag()
 				movement_manager._check_stacking(piece.current_position)
+				if movement_manager.captured_this_turn:
+					movement_manager.reset_capture_flag()
+					turn_manager.current_roll["bonus"] = 10
+					turn_manager.bonus_came_from_dice = 2
+					turn_manager.current_state = TurnManager.State.BONUS_MOVE
+					turn_manager.bonus_move_available.emit(10)
+					return  # no continuar al final que resetea el estado
 			else:
 				status_label.text = "TURBO: No puede moverse -- carta gastada"
 		CardManager.CardType.SHIELD:

@@ -9,6 +9,7 @@ signal hovered(piece_ref)
 signal unhovered(piece_ref)
 signal status_message_requested(message: String)
 
+var lap_size: int = 0
 var has_completed_lap: bool = false
 var mouse_inside = false
 var original_y: float = 0.0
@@ -60,11 +61,17 @@ func _on_mouse_exit():
 	tween.parallel().tween_property(self, "scale", Vector3(1.0, 1.0, 1.0), 0.1)
 
 func _move(steps) -> bool:
+	
 	if is_frozen:
 		status_message_requested.emit("¡Ficha congelada! No puede moverse.")
 		return false
 	
 	if in_home_path:
+		return await _move_in_home_path(steps)
+	
+	if has_completed_lap and current_position == player.home_entry:
+		in_home_path = true
+		home_route = 0
 		return await _move_in_home_path(steps)
 	
 	var steps_to_entry = _steps_to_entry(current_position)
@@ -76,7 +83,7 @@ func _move(steps) -> bool:
 			var square = board.main_path[current_position]
 			await _animate_hop_to(square.global_position)
 			
-			if not has_completed_lap and current_position == start_index:
+			if not has_completed_lap and route == lap_size:
 				has_completed_lap = true
 		
 		if _can_enter_home_path():
@@ -94,7 +101,7 @@ func _move(steps) -> bool:
 			var square = board.main_path[current_position]
 			await _animate_hop_to(square.global_position)
 			
-			if not has_completed_lap and current_position == start_index:
+			if not has_completed_lap and route == lap_size:
 				has_completed_lap = true
 		
 		if _can_enter_home_path():
@@ -130,14 +137,13 @@ func _move(steps) -> bool:
 		
 		return true
 	
-	# Caso 3: Movimiento normal
 	for i in range(steps):
 		route += 1
 		current_position = (route + start_index) % board.main_path.size()
 		var square = board.main_path[current_position]
 		await _animate_hop_to(square.global_position)
 		
-		if not has_completed_lap and current_position == start_index:
+		if not has_completed_lap and route == lap_size:
 			has_completed_lap = true
 	
 	return true
@@ -199,8 +205,6 @@ func tick_status_effects() -> void:
 		shield_turns -= 1
 		if shield_turns <= 0: 
 			is_shielded = false
-	
-	print(color, "   ", piece_id, "   ", is_shielded)
 	
 	if is_frozen:
 		frozen_turns -= 1
@@ -276,7 +280,7 @@ func _leave_jail():
 	in_jail = false
 	route = 0
 	current_position = start_index 
-	
+	lap_size = (player.home_entry - start_index + board.main_path.size()) % board.main_path.size()
 	var start_square = board.main_path[start_index]
 	await _animate_hop_to(start_square.global_position)
 	jail_exited.emit(self)

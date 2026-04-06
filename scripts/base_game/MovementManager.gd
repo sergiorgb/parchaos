@@ -24,9 +24,8 @@ func can_move_piece(piece: Piece, steps: int, is_pair: bool = false) -> bool:
 		movement_denied.emit("¡Ficha congelada! No puede moverse.")
 		return false
 	
-	var target_pos = (piece.current_position + steps) % board.main_path.size()
+	var target_pos = (piece.route + steps + piece.start_index) % board.main_path.size()
 	
-	# Validar límite de 2 fichas por casilla
 	var own_count = 0
 	var enemy_count = 0
 
@@ -137,7 +136,7 @@ func _get_barrier_distance(piece: Piece, steps: int) -> int:
 	var current_pos = piece.current_position
 	
 	for i in range(1, steps + 1):
-		var check_pos = (current_pos + i) % board.main_path.size()
+		var check_pos = (piece.route + steps + piece.start_index) % board.main_path.size()
 		
 		var pieces_on_cell = 0
 		for player in players:
@@ -155,8 +154,7 @@ func move_piece(piece: Piece, steps: int, is_pair: bool = false) -> bool:
 	if not can_move_piece(piece, steps, is_pair):
 		return false
 	
-	# Verificar si el destino es barrera propia y hay par
-	var target_pos = (piece.current_position + steps) % board.main_path.size()
+	var target_pos = (piece.route + steps + piece.start_index) % board.main_path.size()
 	var own_barrier = is_own_barrier_at_pos(piece, target_pos)  # ✅ Usar la función pública
 	
 	if own_barrier and is_pair:
@@ -196,6 +194,7 @@ func _resolve_capture(enemy: Piece):
 	enemy.in_home_path = false
 	enemy.home_route = 0
 	enemy.route = 0
+	enemy.lap_size = 0
 	enemy.is_shielded = false
 	enemy.shield_turns = 0
 	enemy.is_frozen = false
@@ -239,8 +238,8 @@ func needs_break_barrier(piece: Piece, steps: int, is_pair: bool) -> bool:
 	if not is_pair:
 		return false
 	
-	var target_pos = (piece.current_position + steps) % board.main_path.size()
-	return is_own_barrier_at_pos(piece, target_pos)  # ✅ Usar la función pública
+	var target_pos = (piece.route + steps + piece.start_index) % board.main_path.size()
+	return is_own_barrier_at_pos(piece, target_pos) 
 
 func reset_capture_flag():
 	captured_this_turn = false

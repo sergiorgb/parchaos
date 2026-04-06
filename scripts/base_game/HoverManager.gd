@@ -43,8 +43,9 @@ func on_piece_hovered(piece: Piece):
 			_show_ghost(piece, board.home_paths[piece.color][remaining].global_position)
 		return
 	
-	var target_pos = (piece.current_position + steps) % board.main_path.size()
-	_show_ghost(piece, board.main_path[target_pos].global_position)
+	var target_route = piece.route + steps
+	var target_pos_idx = (target_route + piece.start_index) % board.main_path.size()
+	_show_ghost(piece, board.main_path[target_pos_idx].global_position)
 
 func on_piece_unhovered(piece: Piece):
 	if piece == highlight_owner:
