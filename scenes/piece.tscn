@@ -16,16 +16,16 @@ script = ExtResource("1_ic7ih")
 [node name="Visual" type="Node3D" parent="." unique_id=110254972]
 
 [node name="yellow" parent="Visual" unique_id=1004730829 instance=ExtResource("3_4efup")]
-transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.055, 0)
+transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.06, 0)
 
 [node name="blue" parent="Visual" unique_id=272536966 instance=ExtResource("4_ik1ys")]
-transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.055, 0)
+transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.06, 0)
 
 [node name="red" parent="Visual" unique_id=1510272652 instance=ExtResource("5_at83j")]
-transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.055, 0)
+transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.06, 0)
 
 [node name="green" parent="Visual" unique_id=1707075601 instance=ExtResource("2_al1la")]
-transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.055, 0)
+transform = Transform3D(0.15, 0, 0, 0, 0.15, 0, 0, 0, 0.15, -0.114, 0.06, 0)
 
 [node name="Area3D" type="Area3D" parent="." unique_id=183664400]
 
