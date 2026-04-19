@@ -5,7 +5,7 @@ class_name Board
 var main_path = []
 var jail = {}
 var home_paths = {}
-var players: Array = []
+var players = []
 
 const SAFE_SQUARES = [7, 12, 24, 29, 41, 46, 58, 63]
 

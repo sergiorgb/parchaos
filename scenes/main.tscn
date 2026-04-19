@@ -31,7 +31,7 @@ volumetric_fog_emission_energy = 0.3
 [sub_resource type="BoxShape3D" id="BoxShape3D_sugp2"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0wfyh"]
-albedo_color = Color(0.33391026, 0.18340406, 0.08057765, 1)
+albedo_color = Color(0.61960787, 0.6156863, 0.8235294, 1)
 roughness = 0.8
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_0wfyh"]
@@ -65,10 +65,10 @@ mouse_filter = 2
 modulate = Color(0, 0, 0, 1)
 self_modulate = Color(0, 0, 0, 1)
 layout_mode = 0
-offset_left = -52.0
-offset_top = -38.0
-offset_right = -12.0
-offset_bottom = -15.0
+offset_left = 130.0
+offset_top = 134.0
+offset_right = 170.0
+offset_bottom = 157.0
 
 [node name="HandContainer" type="Control" parent="UI/GameUI" unique_id=739357829]
 anchors_preset = 0
