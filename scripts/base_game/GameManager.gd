@@ -19,7 +19,7 @@ var camera: Camera3D
 var players = []
 var board = null
 var game_over: bool = false
-
+var is_processing: bool = false
 var pending_card_screen_pos: Vector2 = Vector2.ZERO
 var deck_pile_cards: Array = []
 var discard_pile_top: Card3D = null
@@ -89,7 +89,6 @@ func _setup_managers():
 	turn_manager.bonus_move_available.connect(_on_bonus_move)
 	turn_manager.penalty_select_piece.connect(_on_penalty)
 	turn_manager.break_barrier_requested.connect(_on_break_barrier_requested)
-	turn_manager.barrier_broken_continue.connect(_on_barrier_broken_continue)
 	
 	hover_manager = HoverManager.new()
 	add_child(hover_manager)
@@ -103,9 +102,6 @@ func _setup_card_ui():
 	hand_display.name = "HandDisplay"
 	$"../UI/GameUI".add_child(hand_display)
 	hand_display.setup()
-	hand_display.card_clicked.connect(_on_hand_card_clicked)
-	hand_display.hide_hand()
-	
 	hand_display.card_clicked.connect(_on_hand_card_clicked)
 	hand_display.hide_hand()
 
@@ -169,16 +165,16 @@ func _input(event):
 	var key = event.keycode if event is InputEventKey else -1
 	
 	if turn_manager.current_state == TurnManager.State.DRAW_PHASE:
-		if event.is_action_pressed("ui_accept"):
+		if event.is_action_pressed("ui_accept") and not is_processing:
 			turn_manager.current_state = TurnManager.State.IDLE
 			_roll_dice()
 			return
-		elif key == KEY_R:
+		elif key == KEY_R and not is_processing:
 			_draw_card_phase()
 			return
-	
+
 	if turn_manager.current_state == TurnManager.State.IDLE:
-		if event.is_action_pressed("ui_accept") and not roll_cooldown:
+		if event.is_action_pressed("ui_accept") and not roll_cooldown and not is_processing:
 			_roll_dice()
 			return
 	
@@ -186,8 +182,52 @@ func _input(event):
 		if key == KEY_ESCAPE:
 			_cancel_card()
 			return
+			
+	# DEBUG BARRERAS
+	if event is InputEventKey and event.pressed:
+		
+		# Flecha abajo → armar situación de barrera
+		if event.keycode == KEY_DOWN:
+			var yellow = players[0]
+			var blue = players[1]
+			
+			# Poner 2 fichas amarillas en casilla 0 (barrera)
+			for i in range(2):
+				var p = yellow.pieces[i]
+				p.in_jail = false
+				p.has_completed_lap = false
+				p.route = 0
+				p.current_position = 0
+				p.lap_size = 63
+				p.in_home_path = false
+				p.home_route = 0
+				p.global_position = board.main_path[0].global_position + Vector3(0.04 * (1 if i == 0 else -1), 0.015, 0)
+			
+			# Poner ficha azul en casilla 65, route 48
+			var bp = blue.pieces[0]
+			bp.in_jail = false
+			bp.has_completed_lap = false
+			bp.route = 48
+			bp.current_position = 65
+			bp.lap_size = (blue.home_entry - blue.start_index + 68) % 68
+			bp.in_home_path = false
+			bp.home_route = 0
+			bp.global_position = board.main_path[65].global_position + Vector3(0, 0.015, 0)
+			
+			status_label.text = "DEBUG: barrera amarilla en 0, azul en 65"
+			return
+		
+		# Flecha arriba → forzar dados 3-3 para el turno actual
+		if event.keycode == KEY_UP:
+			turn_manager.current_state = TurnManager.State.IDLE
+			_on_dice_stopped([4, 4])
+			status_label.text = "DEBUG: dados forzados 3-3"
+			return
 	
 func _draw_card_phase():
+	if is_processing:
+		return
+	is_processing = true
 	var player_idx = turn_manager.current_player_index
 	
 	if card_manager.get_hand(player_idx).size() >= CardManager.MAX_HAND_SIZE:
@@ -195,6 +235,7 @@ func _draw_card_phase():
 		await get_tree().create_timer(1.0).timeout
 		turn_manager.current_state = TurnManager.State.IDLE
 		status_label.text = "Mano llena — [Espacio] para lanzar dados"
+		is_processing = false
 		return
 	
 	if card_manager.deck.is_empty():
@@ -236,6 +277,7 @@ func _draw_card_phase():
 	status_label.text = "Carta robada — Turno terminado"
 	await get_tree().create_timer(0.5).timeout
 	turn_manager.end_turn()
+	is_processing = false
 
 func _get_hand_card_screen_position(card_index: int) -> Vector2:
 	var vp = get_tree().root.get_viewport().get_visible_rect().size
@@ -268,7 +310,7 @@ func _roll_dice():
 
 func _on_dice_stopped(results: Array):
 	movement_manager.reset_capture_flag()
-	var can_move = turn_manager.process_roll(results)
+	turn_manager.process_roll(results)
 	var player = players[turn_manager.current_player_index]
 	var all_in_jail = not player.pieces.any(func(p): return not p.in_jail and not p.is_finished)
 	var is_pair = turn_manager.current_roll.get("pair", false)
@@ -286,15 +328,8 @@ func _on_dice_stopped(results: Array):
 			turn_manager.end_turn()
 			return
 	
-	if not can_move:
-		status_label.text = "No puedes mover. Pasando turno..."
-		await get_tree().create_timer(1.5).timeout
-		turn_manager.end_turn()
-		return
 	
-	var has_jail_exit = turn_manager.current_roll.get("pair", false) and players[turn_manager.current_player_index]._has_pieces_in_jail()
-
-	if not _has_any_valid_move() and not has_jail_exit and turn_manager.current_state != TurnManager.State.PENALTY_JAIL and turn_manager.current_state != TurnManager.State.BREAK_BARRIER_FIRST:
+	if not _has_any_valid_move() and turn_manager.current_state != TurnManager.State.PENALTY_JAIL and turn_manager.current_state != TurnManager.State.BREAK_BARRIER_FIRST:
 		status_label.text = "Sin movimientos posibles. Pasando turno..."
 		await get_tree().create_timer(1.5).timeout
 		turn_manager.end_turn()
@@ -402,8 +437,8 @@ func _handle_break_barrier_first(piece: Piece):
 
 func _execute_move(piece: Piece, steps: int):
 	var is_pair = turn_manager.current_roll.get("pair", false)
-	
 	var is_own_barrier = false
+	
 	if not piece.in_home_path:
 		var steps_to_entry = piece._steps_to_entry(piece.current_position)
 		if steps < steps_to_entry:
@@ -414,7 +449,7 @@ func _execute_move(piece: Piece, steps: int):
 		if is_pair:
 			turn_manager.pending_move_piece = piece
 			turn_manager.pending_move_steps = steps
-			turn_manager.request_break_barrier()
+			turn_manager.break_barrier_requested.emit()
 			return
 		else:
 			return
@@ -457,33 +492,30 @@ func _execute_move(piece: Piece, steps: int):
 func _has_any_valid_move() -> bool:
 	var current_player = players[turn_manager.current_player_index]
 	var steps = turn_manager.get_current_steps()
-	
-	if steps == 0:
-		return false
+	var is_pair = turn_manager.current_roll.get("pair", false)
 	
 	for piece in current_player.pieces:
-		if not piece.in_jail and not piece.is_finished and not piece.is_frozen:
-			if movement_manager.can_move_piece(piece, steps):
-				return true
+		if piece.is_finished:
+			continue
+		
+		if piece.in_jail:
+			if is_pair:
+				# verificar que no haya ya 2 fichas propias en la salida
+				var pieces_at_start = 0
+				for p in current_player.pieces:
+					if not p.in_jail and not p.is_finished and p.current_position == piece.start_index:
+						pieces_at_start += 1
+				if pieces_at_start < 2:
+					return true
+			continue
+		
+		if piece.is_frozen:
+			continue
+		
+		if movement_manager.can_move_piece(piece, steps):
+			return true
 	
 	return false
-
-func _try_open_cards():
-	var hand = card_manager.get_hand(turn_manager.current_player_index)
-	if hand.is_empty():
-		status_label.text = "No tienes cartas"
-		return
-	turn_manager.current_state = TurnManager.State.CARD_SELECT
-	_show_card_selection()
-
-func _show_card_selection():
-	var hand = card_manager.get_hand(turn_manager.current_player_index)
-	var text = "ELIGE CARTA: "
-	for i in range(hand.size()):
-		var info = CardManager.CARD_INFO[hand[i]]
-		text += "[" + str(i + 1) + "] " + info["icon"] + " " + info["name"] + "  "
-	text += "| [Esc] Cancelar"
-	status_label.text = text
 
 func _select_card(card_index: int):
 	var hand = card_manager.get_hand(turn_manager.current_player_index)
@@ -529,7 +561,7 @@ func _apply_no_target_card():
 	pending_card_type = -1
 	turn_manager.current_state = TurnManager.State.IDLE
 	turn_manager.card_used_this_turn = true
-	_update_card_display()
+	await _animate_card_to_discard(card_type, pending_card_screen_pos)
 
 func _update_discard_display(card_type: int):
 	if discard_pile_top:
@@ -636,7 +668,8 @@ func _handle_card_target(piece: Piece):
 	
 	turn_manager.current_state = TurnManager.State.IDLE
 	turn_manager.card_used_this_turn = true 
-	_update_card_display()
+	await _animate_card_to_discard(card_type, pending_card_screen_pos)
+	
 	await get_tree().create_timer(1.2).timeout
 	status_label.text = "Turno de " + player.display_name.to_upper() + " — [Espacio] lanzar | [Q] cartas"
 	hand_display.hide_hand()
@@ -677,9 +710,6 @@ func _on_bonus_move(steps: int):
 
 func _on_break_barrier_requested():
 	status_label.text = "Rompe la barrera: selecciona una ficha de la barrera para mover 1 paso"
-
-func _on_barrier_broken_continue():
-	status_label.text = "Barrera rota! Ahora mueve tu ficha " + str(turn_manager.pending_move_steps) + " pasos"
 
 func _on_penalty():
 	status_label.text = "¡3 pares! Elige ficha para cárcel"

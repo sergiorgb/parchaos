@@ -92,11 +92,3 @@ func steal_random_card(from_player: int, to_player: int) -> int:
 	from_hand.remove_at(idx)
 	player_hands[to_player].append(card)
 	return card
-
-func get_deck_size() -> int:
-	return deck.size()
-
-func get_discard_top() -> int:
-	if discard.is_empty():
-		return -1
-	return discard.back()

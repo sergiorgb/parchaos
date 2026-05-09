@@ -6,18 +6,15 @@ signal turn_ended(player_index: int)
 signal bonus_move_available(steps: int)
 signal penalty_select_piece()
 signal break_barrier_requested()
-signal barrier_broken_continue()
 
 enum State {
 	IDLE,
 	DRAW_PHASE,
-	ROLLING,
 	BREAK_BARRIER_FIRST,
 	MOVE_DICE_1,
 	MOVE_DICE_2,
 	BONUS_MOVE,
 	PENALTY_JAIL,
-	CARD_SELECT,
 	CARD_TARGET
 }
 
@@ -47,7 +44,7 @@ func start_turn(player_index: int):
 	current_roll = {}
 	turn_started.emit(player_index)
 
-func process_roll(dice_results: Array) -> bool:
+func process_roll(dice_results: Array):
 	var d1 = dice_results[0]
 	var d2 = dice_results[1]
 	if double_next_roll:
@@ -59,11 +56,6 @@ func process_roll(dice_results: Array) -> bool:
 	
 	var player = players[current_player_index]
 	
-	var can_move_anyway = player._can_move(current_roll)
-	var can_exit_jail = player._has_pieces_in_jail() and is_pair
-	
-	if not can_move_anyway and not can_exit_jail:
-		return false
 	
 	if is_pair:
 		consecutive_pairs += 1
@@ -71,17 +63,17 @@ func process_roll(dice_results: Array) -> bool:
 			consecutive_pairs = 0
 			current_state = State.PENALTY_JAIL
 			penalty_select_piece.emit()
-			return true
+			return
 	else:
 		consecutive_pairs = 0
 	
 	if is_pair and player._has_own_barrier() and not has_broken_barrier_this_turn:
 		current_state = State.BREAK_BARRIER_FIRST
 		break_barrier_requested.emit()
-		return true
+		return
 	
 	current_state = State.MOVE_DICE_1
-	return true
+	return
 
 func on_piece_moved(success: bool, captured: bool = false):
 	if not success:
@@ -149,9 +141,6 @@ func get_current_steps() -> int:
 			steps = current_roll.get("bonus", 0)
 			
 	return steps
-
-func request_break_barrier():
-	break_barrier_requested.emit()
 
 func can_click_piece() -> bool:
 	return current_state in [State.MOVE_DICE_1, State.MOVE_DICE_2, State.BONUS_MOVE, State.PENALTY_JAIL, State.BREAK_BARRIER_FIRST, State.CARD_TARGET]

@@ -1,7 +1,6 @@
 class_name HandDisplay
 extends Control
 
-var card_scene = preload("res://scenes/card_3d.tscn")
 const CARD_TEXTURES = {
 	-1: preload("res://resources/cards/Respaldo.png"),
 	0:  preload("res://resources/cards/Turbo.png"),
@@ -14,11 +13,7 @@ const CARD_TEXTURES = {
 }
 
 const CARD_SIZE = Vector2(180, 260)
-const MAX_CARDS = 5
-const FAN_SPREAD = 20.0
-const FAN_Y_OFFSET = 0.8
 
-# ✅ SEÑAL MODIFICADA: ahora incluye posición en pantalla
 signal card_clicked(card_index: int, screen_position: Vector2)
 
 var card_nodes: Array = []
@@ -55,13 +50,11 @@ func show_hand(hand: Array):
 		
 		card.mouse_filter = Control.MOUSE_FILTER_STOP
 		
-		# ✅ GUARDAR POSICIÓN PARA LA SEÑAL
 		var idx = i
 		var card_screen_pos = card.position + CARD_SIZE / 2 + global_position
 		
 		card.gui_input.connect(func(event):
 			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-				# ✅ EMITIR ÍNDICE Y POSICIÓN CENTRAL DE LA CARTA
 				card_clicked.emit(idx, card_screen_pos)
 		)
 		

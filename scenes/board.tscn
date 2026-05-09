@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cr07kk1t6vnkv"]
 
 [ext_resource type="PackedScene" uid="uid://dmpm1ftm5y3p0" path="res://resources/mesa.glb" id="1_bw3vb"]
-[ext_resource type="Script" uid="uid://dsau7k4mm0xhf" path="res://scripts/base_game/Board.gd" id="1_tx6nw"]
+[ext_resource type="Script" uid="uid://t25u5r71dkpf" path="res://scripts/base_game/Board.gd" id="1_tx6nw"]
 
 [node name="Board" type="Node3D" unique_id=1352643309]
 script = ExtResource("1_tx6nw")
@@ -64,7 +64,6 @@ transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.4328711, 0.02328065, 0.590
 
 [node name="Main_Path" type="Node3D" parent="." unique_id=531020007]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0)
-visible = false
 
 [node name="Square0" type="Marker3D" parent="Main_Path" unique_id=1346861962]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.03438387, 0.00465613, 0.08366214)

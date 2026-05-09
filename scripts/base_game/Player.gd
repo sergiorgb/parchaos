@@ -32,31 +32,3 @@ func _has_own_barrier() -> bool:
 		if count >= 2:
 			return true
 	return false
-
-func _can_move(roll: Dictionary) -> bool:
-	var has_jail_pieces = _has_pieces_in_jail()
-	var has_active_pieces = false
-	for p in pieces:
-		if not p.in_jail and not p.is_finished:
-			has_active_pieces = true
-			break
-	
-	if roll.get("pair", false) and has_jail_pieces:
-		return true
-	
-	if has_active_pieces:
-		return true
-	
-	return false
-
-func _has_movable_piece_besides_barrier(roll: Dictionary) -> bool:
-	for piece in pieces:
-		if piece.in_jail or piece.is_finished:
-			continue
-		var count = 0
-		for p in pieces:
-			if not p.in_jail and not p.is_finished and p.current_position == piece.current_position:
-				count += 1
-		if count < 2:
-			return true
-	return false

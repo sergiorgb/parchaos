@@ -1,6 +1,6 @@
 extends Node
 
-class_name Board
+class_name GameBoard
 
 var main_path = []
 var jail = {}
