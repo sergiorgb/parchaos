@@ -101,7 +101,7 @@ func _setup_managers():
 	add_child(card_manager)
 	
 	ai_controller = AIController.new()
-	ai_controller.setup(AIController.Difficulty.HARD)
+	ai_controller.setup(AIController.Difficulty.NORMAL)
 	add_child(ai_controller)
 
 func _setup_card_ui():
@@ -371,12 +371,13 @@ func _do_ai_pick_piece():
 		"movement_manager": movement_manager,
 		"has_broken_barrier": turn_manager.has_broken_barrier_this_turn,
 		"turn_manager": turn_manager,
+		"card_manager": card_manager,
 		"steps": turn_manager.get_current_steps(),
 		"is_pair": turn_manager.current_roll.get("pair", false)
 	}
 	var piece = ai_controller.decide_piece(context)
 	if piece:
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(0.3).timeout
 		_on_piece_clicked(piece)
 
 func _on_piece_clicked(piece_ref: Piece):
@@ -454,7 +455,7 @@ func _on_jail_exited(_piece: Piece):
 		turn_manager.bonus_move_available.emit(10)
 		status_label.text = "¡Captura! Bonus de 10 pasos"
 		if players[turn_manager.current_player_index].is_ai:
-			await get_tree().create_timer(1.0).timeout
+			await get_tree().create_timer(0.75).timeout
 			_do_ai_pick_piece()
 	else:
 		status_label.text = "Ficha liberada! Turno terminado."
@@ -477,7 +478,7 @@ func _handle_break_barrier_first(piece: Piece):
 	status_label.text = "Barrera rota! Ahora mueve " + str(turn_manager.current_roll.get("dice2", 0)) + " pasos con otra ficha"
 	
 	if players[turn_manager.current_player_index].is_ai:
-		await get_tree().create_timer(1.0).timeout
+		await get_tree().create_timer(0.75).timeout
 		_do_ai_pick_piece()
 
 func _execute_move(piece: Piece, steps: int):
@@ -621,15 +622,13 @@ func _apply_no_target_card():
 	turn_manager.card_used_this_turn = true
 	await _animate_card_to_discard(card_type, pending_card_screen_pos)
 
-func _update_discard_display(card_type: int):
+func _update_discard_display(_card_type: int):
 	if discard_pile_top:
-		discard_pile_top.card_type = card_type
 		discard_pile_top.visible = true
-	
 
 func _animate_card_to_discard(card_type: int, from_screen_pos: Vector2):
 	var animated_card = card_scene.instantiate()
-	animated_card.card_type = card_type
+	animated_card.card_type = -1 
 	get_parent().add_child(animated_card)
 	
 	var start_world_pos = _screen_to_world_position(from_screen_pos)
@@ -738,6 +737,8 @@ func _on_jailbreak_card_exited(piece: Piece):
 	movement_manager.reset_capture_flag()
 
 func _update_card_display():
+	if discard_pile_top:
+		discard_pile_top.visible = true
 	var hand = card_manager.get_hand(turn_manager.current_player_index)
 	hand_display.show_hand(hand)
 	if turn_manager.current_state in [TurnManager.State.IDLE, TurnManager.State.DRAW_PHASE] \
@@ -769,7 +770,7 @@ func _on_bonus_move(steps: int):
 func _on_break_barrier_requested():
 	status_label.text = "Rompe la barrera: selecciona una ficha de la barrera para mover 1 paso"
 	if players[turn_manager.current_player_index].is_ai:
-		await get_tree().create_timer(1.0).timeout
+		await get_tree().create_timer(0.75).timeout
 		_do_ai_break_barrier()
 
 func _do_ai_break_barrier():
@@ -833,7 +834,7 @@ func _animate_deck_refill():
 	await tween.finished
 
 func _do_ai_turn(player_index: int):
-	await get_tree().create_timer(1.0).timeout
+	await get_tree().create_timer(1.25).timeout
 	
 	# Fase de cartas
 	var context = {
@@ -842,16 +843,100 @@ func _do_ai_turn(player_index: int):
 		"movement_manager": movement_manager,
 		"has_broken_barrier": turn_manager.has_broken_barrier_this_turn,
 		"turn_manager": turn_manager,
+		"card_manager": card_manager,
 		"steps": 0,
 		"is_pair": false
 	}
+	
+	if ai_controller.decide_should_draw(context) and turn_manager.current_state == TurnManager.State.DRAW_PHASE:
+		await _draw_card_phase()
+		return
+	
+	if ai_controller.difficulty == AIController.Difficulty.NORMAL:
+		var hand = card_manager.get_hand(player_index)
+		var offensive = [CardManager.CardType.FREEZE, CardManager.CardType.SABOTAGE, CardManager.CardType.THIEF]
+		for i in range(hand.size()):
+			if hand[i] in offensive:
+				card_manager.discard_card(player_index, i)
+				break
+	
 	var card_index = ai_controller.decide_card(context)
 	if card_index != -1:
 		pending_card_index = card_index
 		pending_card_type = card_manager.get_hand(player_index)[card_index]
 		_select_card(card_index)
 		await get_tree().create_timer(0.8).timeout
+		# si quedó en CARD_TARGET, la IA elige el target
+		if turn_manager.current_state == TurnManager.State.CARD_TARGET:
+			var target = _ai_pick_card_target(player_index, pending_card_type)
+			if target:
+				_on_piece_clicked(target)
+			else:
+				_cancel_card()
+		await get_tree().create_timer(0.5).timeout
 	
 	# Lanzar dados
 	turn_manager.current_state = TurnManager.State.IDLE
 	_roll_dice()
+
+func _ai_pick_card_target(player_index: int, card_type: int) -> Piece:
+	var player = players[player_index]
+	var main_path_size = board.main_path.size()
+	match card_type:
+		CardManager.CardType.JAILBREAK:
+			for piece in player.pieces:
+				if piece.in_jail:
+					return piece
+		CardManager.CardType.SHIELD:
+			for piece in player.pieces:
+				if not piece.in_jail and not piece.is_finished and not piece.is_shielded:
+					return piece
+		CardManager.CardType.TURBO:
+			for piece in player.pieces:
+				if not piece.in_jail and not piece.is_finished and not piece.is_frozen:
+					if movement_manager.can_move_piece(piece, 5):
+						return piece
+		CardManager.CardType.FREEZE, CardManager.CardType.SABOTAGE:
+			# primero busca el más adelantado con route >= 30
+			var best: Piece = null
+			var best_route = -1
+			for enemy_player in players:
+				if enemy_player == player:
+					continue
+				for enemy in enemy_player.pieces:
+					if enemy.in_jail or enemy.is_finished:
+						continue
+					if enemy.route >= 30 and enemy.route > best_route:
+						best_route = enemy.route
+						best = enemy
+			if best:
+				return best
+			# si no, el enemigo más cercano por detrás
+			for piece in player.pieces:
+				if piece.in_jail or piece.is_finished:
+					continue
+				for enemy_player in players:
+					if enemy_player == player:
+						continue
+					for enemy in enemy_player.pieces:
+						if enemy.in_jail or enemy.is_finished:
+							continue
+						var dist = (piece.current_position - enemy.current_position + main_path_size) % main_path_size
+						if dist <= 6:
+							return enemy
+		CardManager.CardType.THIEF:
+			# el enemigo con más cartas
+			var best: Piece = null
+			var best_cards = -1
+			for enemy_player in players:
+				if enemy_player == player:
+					continue
+				var hand_size = card_manager.get_hand(enemy_player.player_id).size()
+				if hand_size > best_cards:
+					best_cards = hand_size
+					for enemy in enemy_player.pieces:
+						if not enemy.in_jail and not enemy.is_finished:
+							best = enemy
+							break
+			return best
+	return null

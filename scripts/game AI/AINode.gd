@@ -4,12 +4,12 @@ extends RefCounted
 var evaluate: Callable
 var children: Array = []
 
-func decide(context: Dictionary) -> Piece:
+func decide(context: Dictionary) -> Variant:
 	var result = evaluate.call(context)
-	if result:
+	if result != null:
 		return result
 	for child in children:
 		var r = child.decide(context)
-		if r:
+		if r != null:
 			return r
 	return null

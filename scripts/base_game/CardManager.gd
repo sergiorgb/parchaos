@@ -81,6 +81,16 @@ func get_card_desc(card_type: int) -> String:
 func get_card_target(card_type: int) -> String:
 	return CARD_INFO[card_type]["target"]
 
+func get_deck_size() -> int:
+	return deck.size()
+
+func discard_card(player_index: int, card_index: int):
+	if card_index < 0 or card_index >= player_hands[player_index].size():
+		return
+	var card_type = player_hands[player_index][card_index]
+	player_hands[player_index].remove_at(card_index)
+	discard.append(card_type)
+
 func steal_random_card(from_player: int, to_player: int) -> int:
 	var from_hand = player_hands.get(from_player, [])
 	if from_hand.is_empty():
