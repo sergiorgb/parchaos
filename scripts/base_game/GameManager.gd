@@ -16,7 +16,7 @@ var camera_controller: CameraController
 var hover_manager: HoverManager
 var card_manager: CardManager
 var camera: Camera3D
-var ai_controller: AIController
+var ai_controllers: Array = []
 var players = []
 var board = null
 var game_over: bool = false
@@ -100,9 +100,12 @@ func _setup_managers():
 	card_manager = CardManager.new()
 	add_child(card_manager)
 	
-	ai_controller = AIController.new()
-	ai_controller.setup(AIController.Difficulty.NORMAL)
-	add_child(ai_controller)
+	for i in range(4):
+		var config = GameConfig.player_config[i]
+		var ctrl = AIController.new()
+		ctrl.setup(config["difficulty"] as AIController.Difficulty)
+		add_child(ctrl)
+		ai_controllers.append(ctrl)
 
 func _setup_card_ui():
 	hand_display = HandDisplay.new()
@@ -125,7 +128,8 @@ func _setup_players():
 	for data in PLAYER_DATA:
 		var player = Player.new()
 		add_child(player)
-		player.setup(data.id, data.color, data.name, data.start_index, data.home_entry, IS_AI[data.id])
+		var config = GameConfig.player_config[data.id]
+		player.setup(data.id, data.color, data.name, data.start_index, data.home_entry, config["is_ai"])
 		players.append(player)
 		_spawn_pieces(player)
 
@@ -375,7 +379,7 @@ func _do_ai_pick_piece():
 		"steps": turn_manager.get_current_steps(),
 		"is_pair": turn_manager.current_roll.get("pair", false)
 	}
-	var piece = ai_controller.decide_piece(context)
+	var piece = ai_controllers[turn_manager.current_player_index].decide_piece(context)
 	if piece:
 		await get_tree().create_timer(0.3).timeout
 		_on_piece_clicked(piece)
@@ -848,11 +852,11 @@ func _do_ai_turn(player_index: int):
 		"is_pair": false
 	}
 	
-	if ai_controller.decide_should_draw(context) and turn_manager.current_state == TurnManager.State.DRAW_PHASE:
+	if ai_controllers[player_index].decide_should_draw(context) and turn_manager.current_state == TurnManager.State.DRAW_PHASE:
 		await _draw_card_phase()
 		return
 	
-	if ai_controller.difficulty == AIController.Difficulty.NORMAL:
+	if ai_controllers[player_index].difficulty == AIController.Difficulty.NORMAL:
 		var hand = card_manager.get_hand(player_index)
 		var offensive = [CardManager.CardType.FREEZE, CardManager.CardType.SABOTAGE, CardManager.CardType.THIEF]
 		for i in range(hand.size()):
@@ -860,7 +864,7 @@ func _do_ai_turn(player_index: int):
 				card_manager.discard_card(player_index, i)
 				break
 	
-	var card_index = ai_controller.decide_card(context)
+	var card_index = ai_controllers[player_index].decide_card(context)
 	if card_index != -1:
 		pending_card_index = card_index
 		pending_card_type = card_manager.get_hand(player_index)[card_index]
