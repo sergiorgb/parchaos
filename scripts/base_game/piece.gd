@@ -198,6 +198,9 @@ func _steps_to_entry(old_pos: int):
 
 func _finish():
 	is_finished = true
+	var finish_spot = board.get_node_or_null("Finish/" + color + "_" + str(piece_id))
+	if finish_spot:
+		await _animate_hop_to(finish_spot.global_position)
 	finished.emit(self)
 
 func tick_status_effects() -> void:

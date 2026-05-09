@@ -16,6 +16,7 @@ var camera_controller: CameraController
 var hover_manager: HoverManager
 var card_manager: CardManager
 var camera: Camera3D
+var ai_controller: AIController
 var players = []
 var board = null
 var game_over: bool = false
@@ -37,6 +38,8 @@ const PLAYER_DATA = [
 	{"id": 2, "color": "red", "name": "rojo", "start_index": 34, "home_entry": 29},
 	{"id": 3, "color": "green", "name": "verde", "start_index": 51, "home_entry": 46}
 ]
+
+const IS_AI = [true, true, true, true]
 
 func _ready():
 	await get_tree().process_frame
@@ -96,6 +99,10 @@ func _setup_managers():
 	
 	card_manager = CardManager.new()
 	add_child(card_manager)
+	
+	ai_controller = AIController.new()
+	ai_controller.setup(AIController.Difficulty.HARD)
+	add_child(ai_controller)
 
 func _setup_card_ui():
 	hand_display = HandDisplay.new()
@@ -118,7 +125,7 @@ func _setup_players():
 	for data in PLAYER_DATA:
 		var player = Player.new()
 		add_child(player)
-		player.setup(data.id, data.color, data.name, data.start_index, data.home_entry)
+		player.setup(data.id, data.color, data.name, data.start_index, data.home_entry, IS_AI[data.id])
 		players.append(player)
 		_spawn_pieces(player)
 
@@ -321,12 +328,16 @@ func _on_dice_stopped(results: Array):
 			status_label.text = "No sacaste par! Intento " + str(jail_roll_attempts) + "/" + str(MAX_JAIL_ROLLS) + " -- Presiona espacio"
 			turn_manager.current_state = TurnManager.State.IDLE
 			_start_roll_cooldown()
+			if players[turn_manager.current_player_index].is_ai:
+				await get_tree().create_timer(1.0).timeout
+				_do_ai_turn(turn_manager.current_player_index)
 			return
 		else:
 			status_label.text = "3 intentos fallidos. Pasando turno..."
 			await get_tree().create_timer(1.5).timeout
 			turn_manager.end_turn()
 			return
+		
 	
 	
 	if not _has_any_valid_move() and turn_manager.current_state != TurnManager.State.PENALTY_JAIL and turn_manager.current_state != TurnManager.State.BREAK_BARRIER_FIRST:
@@ -345,8 +356,28 @@ func _on_dice_stopped(results: Array):
 			status_label.text = "Dado 1: " + str(turn_manager.current_roll.dice1) + " | Dado 2: " + str(turn_manager.current_roll.dice2) + " | Mueve con dado 1"
 		_:
 			status_label.text = "Dados listos!"
+		
+	if players[turn_manager.current_player_index].is_ai:
+		await get_tree().create_timer(1.0).timeout
+		_do_ai_pick_piece()
 	
 	_start_roll_cooldown()
+
+func _do_ai_pick_piece():
+	var player_index = turn_manager.current_player_index
+	var context = {
+		"player": players[player_index],
+		"board": board,
+		"movement_manager": movement_manager,
+		"has_broken_barrier": turn_manager.has_broken_barrier_this_turn,
+		"turn_manager": turn_manager,
+		"steps": turn_manager.get_current_steps(),
+		"is_pair": turn_manager.current_roll.get("pair", false)
+	}
+	var piece = ai_controller.decide_piece(context)
+	if piece:
+		await get_tree().create_timer(0.5).timeout
+		_on_piece_clicked(piece)
 
 func _on_piece_clicked(piece_ref: Piece):
 	if turn_manager.current_state == TurnManager.State.CARD_TARGET:
@@ -387,8 +418,15 @@ func _handle_jail_exit(piece: Piece):
 		status_label.text = "Necesitas un par para salir de la carcel"
 		return
 	
+	if turn_manager.has_broken_barrier_this_turn:
+		status_label.text = "Ya rompiste barrera, no puedes sacar ficha"
+		return
+	
 	if turn_manager.current_state not in [TurnManager.State.MOVE_DICE_1, TurnManager.State.MOVE_DICE_2]:
 		status_label.text = "Accion no permitida ahora"
+		if players[turn_manager.current_player_index].is_ai:
+			await get_tree().create_timer(0.5).timeout
+			_do_ai_pick_piece()
 		return
 	
 	var pieces_at_start = 0
@@ -415,6 +453,9 @@ func _on_jail_exited(_piece: Piece):
 		turn_manager.bonus_came_from_dice = 2
 		turn_manager.bonus_move_available.emit(10)
 		status_label.text = "¡Captura! Bonus de 10 pasos"
+		if players[turn_manager.current_player_index].is_ai:
+			await get_tree().create_timer(1.0).timeout
+			_do_ai_pick_piece()
 	else:
 		status_label.text = "Ficha liberada! Turno terminado."
 		await get_tree().create_timer(0.8).timeout
@@ -434,6 +475,10 @@ func _handle_break_barrier_first(piece: Piece):
 	turn_manager.current_state = TurnManager.State.MOVE_DICE_2
 	
 	status_label.text = "Barrera rota! Ahora mueve " + str(turn_manager.current_roll.get("dice2", 0)) + " pasos con otra ficha"
+	
+	if players[turn_manager.current_player_index].is_ai:
+		await get_tree().create_timer(1.0).timeout
+		_do_ai_pick_piece()
 
 func _execute_move(piece: Piece, steps: int):
 	var is_pair = turn_manager.current_roll.get("pair", false)
@@ -480,12 +525,25 @@ func _execute_move(piece: Piece, steps: int):
 			dice_manager.highlight_active_dice(1)
 			status_label.text = "Mueve con dado 2: " + str(turn_manager.current_roll.get("dice2", 0))
 			status_label.visible = true
+			if players[turn_manager.current_player_index].is_ai:
+				await get_tree().create_timer(1.0).timeout
+				_do_ai_pick_piece()
 		TurnManager.State.BONUS_MOVE:
 			dice_manager.reset_dice_highlight(1)
 			status_label.text = "¡Bonus! Mueve " + str(turn_manager.current_roll.get("bonus", 0)) + " pasos"
 			status_label.visible = true
+			if players[turn_manager.current_player_index].is_ai:
+				await get_tree().create_timer(1.0).timeout
+				_do_ai_pick_piece()
 		TurnManager.State.IDLE:
 			dice_manager.reset_dice_highlight(1)
+			
+	if turn_manager.current_state == TurnManager.State.BONUS_MOVE:
+		if not _has_any_valid_move():
+			status_label.text = "Sin movimientos posibles con bonus. Pasando turno..."
+			await get_tree().create_timer(1.5).timeout
+			turn_manager.end_turn()
+			return
 	
 	_update_card_display()
 
@@ -710,6 +768,17 @@ func _on_bonus_move(steps: int):
 
 func _on_break_barrier_requested():
 	status_label.text = "Rompe la barrera: selecciona una ficha de la barrera para mover 1 paso"
+	if players[turn_manager.current_player_index].is_ai:
+		await get_tree().create_timer(1.0).timeout
+		_do_ai_break_barrier()
+
+func _do_ai_break_barrier():
+	var player = players[turn_manager.current_player_index]
+	for piece in player.pieces:
+		var barrier_pieces = movement_manager.get_barrier_pieces_at(piece.current_position, player)
+		if barrier_pieces.size() >= 2:
+			_handle_break_barrier_first(piece)
+			return
 
 func _on_penalty():
 	status_label.text = "¡3 pares! Elige ficha para cárcel"
@@ -726,6 +795,8 @@ func _on_turn_started(player_index: int):
 	else:
 		status_label.text = "Turno de " + players[player_index].display_name.to_upper() + " — [Espacio] lanzar"
 	
+	if players[player_index].is_ai:
+		_do_ai_turn(player_index)
 	_update_card_display()
 
 func _on_turn_ended(_player_index: int):
@@ -760,3 +831,27 @@ func _animate_deck_refill():
 	tween.tween_callback(temp_card.queue_free)
 	
 	await tween.finished
+
+func _do_ai_turn(player_index: int):
+	await get_tree().create_timer(1.0).timeout
+	
+	# Fase de cartas
+	var context = {
+		"player": players[player_index],
+		"board": board,
+		"movement_manager": movement_manager,
+		"has_broken_barrier": turn_manager.has_broken_barrier_this_turn,
+		"turn_manager": turn_manager,
+		"steps": 0,
+		"is_pair": false
+	}
+	var card_index = ai_controller.decide_card(context)
+	if card_index != -1:
+		pending_card_index = card_index
+		pending_card_type = card_manager.get_hand(player_index)[card_index]
+		_select_card(card_index)
+		await get_tree().create_timer(0.8).timeout
+	
+	# Lanzar dados
+	turn_manager.current_state = TurnManager.State.IDLE
+	_roll_dice()

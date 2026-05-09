@@ -6,14 +6,16 @@ var player_id: int
 var color: String
 var start_index: int
 var home_entry: int
+var is_ai: bool
 var pieces = []
 
-func setup(id: int, p_color: String, p_name:String, s_index: int, h_entry: int,):
+func setup(id: int, p_color: String, p_name:String, s_index: int, h_entry: int, isAI: bool):
 	self.display_name = p_name
 	self.player_id = id
 	self.color = p_color
 	self.start_index = s_index
 	self.home_entry = h_entry
+	self.is_ai = isAI
 
 func _has_pieces_in_jail() -> bool:
 	for piece in pieces:
