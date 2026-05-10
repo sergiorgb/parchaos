@@ -3,7 +3,7 @@
 class_name MovementManager
 extends Node
 
-signal capture_happened(captured_piece: Piece, bonus: int)
+signal capture_happened(captured_piece: GamePiece, bonus: int)
 signal victory_achieved(player: Player)
 signal movement_denied(message: String)
 
@@ -16,7 +16,7 @@ func setup(p_board: GameBoard, p_players: Array):
 	players = p_players
 	captured_this_turn = false
 
-func can_move_piece(piece: Piece, steps: int, is_pair: bool = false) -> bool:
+func can_move_piece(piece: GamePiece, steps: int, is_pair: bool = false) -> bool:
 	if piece.is_finished or piece.in_jail:
 		return false
 	if piece.is_frozen:
@@ -77,7 +77,7 @@ func get_barrier_pieces_at(target_pos: int, player: Player) -> Array:
 			barrier_pieces.append(p)
 	return barrier_pieces
 
-func break_barrier(piece: Piece, steps: int):
+func break_barrier(piece: GamePiece, steps: int):
 	var current_pos = piece.current_position
 	
 	var success = await piece._move(steps)
@@ -91,7 +91,7 @@ func break_barrier(piece: Piece, steps: int):
 		piece.in_home_path = true
 		piece.home_route = 0
 
-func is_own_barrier_at_pos(piece: Piece, target_pos: int) -> bool:
+func is_own_barrier_at_pos(piece: GamePiece, target_pos: int) -> bool:
 	var count = 0
 	
 	for p in piece.player.pieces:
@@ -100,7 +100,7 @@ func is_own_barrier_at_pos(piece: Piece, target_pos: int) -> bool:
 	
 	return count >= 2
 
-func _has_barrier_in_path(piece: Piece, steps: int) -> bool:
+func _has_barrier_in_path(piece: GamePiece, steps: int) -> bool:
 	for i in range(1, steps + 1):
 		var check_pos = (piece.route + i + piece.start_index) % board.main_path.size()
 		
@@ -124,7 +124,7 @@ func _has_barrier_in_path(piece: Piece, steps: int) -> bool:
 	
 	return false
 
-func move_piece(piece: Piece, steps: int, is_pair: bool = false) -> bool:
+func move_piece(piece: GamePiece, steps: int, is_pair: bool = false) -> bool:
 	if not can_move_piece(piece, steps, is_pair):
 		return false
 	
@@ -147,7 +147,7 @@ func move_piece(piece: Piece, steps: int, is_pair: bool = false) -> bool:
 	
 	return true
 
-func _check_capture(piece: Piece):
+func _check_capture(piece: GamePiece):
 	if piece.current_position in board.SAFE_SQUARES:
 		return
 	
@@ -160,7 +160,7 @@ func _check_capture(piece: Piece):
 			continue
 		_resolve_capture(enemy)
 
-func _resolve_capture(enemy: Piece):
+func _resolve_capture(enemy: GamePiece):
 	if enemy.is_shielded:
 		movement_denied.emit("¡Ataque bloqueado por Escudo!")
 		return

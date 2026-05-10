@@ -5,14 +5,14 @@ var board: Node
 var turn_manager: TurnManager
 var movement_manager: MovementManager
 var current_highlight: Node3D = null
-var highlight_owner: Piece = null
+var highlight_owner: GamePiece = null
 
 func setup(p_board, p_turn, p_movement):
 	board = p_board
 	turn_manager = p_turn
 	movement_manager = p_movement
 
-func on_piece_hovered(piece: Piece):
+func on_piece_hovered(piece: GamePiece):
 	_clear_highlight()
 	highlight_owner = piece
 	
@@ -47,14 +47,14 @@ func on_piece_hovered(piece: Piece):
 	var target_pos_idx = (target_route + piece.start_index) % board.main_path.size()
 	_show_ghost(piece, board.main_path[target_pos_idx].global_position)
 
-func on_piece_unhovered(piece: Piece):
+func on_piece_unhovered(piece: GamePiece):
 	if piece == highlight_owner:
 		await piece.get_tree().create_timer(0.05).timeout
 		if piece == highlight_owner:  # verificar que sigue siendo el dueño
 			_clear_highlight()
 			highlight_owner = null
 
-func _show_ghost(piece: Piece, target_pos: Vector3):
+func _show_ghost(piece: GamePiece, target_pos: Vector3):
 	var ghost = piece.duplicate()
 	ghost.set_script(null)
 	

@@ -12,8 +12,8 @@ func setup(p_difficulty: Difficulty):
 	tree = _build_tree()
 	card_tree = _build_card_tree()
 
-func decide_piece(context: Dictionary) -> Piece:
-	return tree.decide(context) as Piece
+func decide_piece(context: Dictionary) -> GamePiece:
+	return tree.decide(context) as GamePiece
 
 func decide_card(context: Dictionary) -> int:
 	if difficulty == Difficulty.EASY:
@@ -63,7 +63,7 @@ func _build_tree() -> AINode:
 
 	return root
 
-func _check_finish(context: Dictionary) -> Piece:
+func _check_finish(context: Dictionary) -> GamePiece:
 	var player: Player = context.player
 	var steps: int = context.steps
 	for piece in player.pieces:
@@ -75,7 +75,7 @@ func _check_finish(context: Dictionary) -> Piece:
 				return piece
 	return null
 
-func _check_capture(context: Dictionary) -> Piece:
+func _check_capture(context: Dictionary) -> GamePiece:
 	var player: Player = context.player
 	var steps: int = context.steps
 	for piece in player.pieces:
@@ -91,7 +91,7 @@ func _check_capture(context: Dictionary) -> Piece:
 			return piece
 	return null
 
-func _check_jail_exit(context: Dictionary) -> Piece:
+func _check_jail_exit(context: Dictionary) -> GamePiece:
 	var player: Player = context.player
 	if context.turn_manager.current_state != TurnManager.State.MOVE_DICE_1:
 		return null
@@ -105,7 +105,7 @@ func _check_jail_exit(context: Dictionary) -> Piece:
 			return piece
 	return null
 
-func _check_form_barrier(context: Dictionary) -> Piece:
+func _check_form_barrier(context: Dictionary) -> GamePiece:
 	var player: Player = context.player
 	var steps: int = context.steps
 	for piece in player.pieces:
@@ -121,10 +121,10 @@ func _check_form_barrier(context: Dictionary) -> Piece:
 				return piece
 	return null
 
-func _pick_most_advanced(context: Dictionary) -> Piece:
+func _pick_most_advanced(context: Dictionary) -> GamePiece:
 	var player: Player = context.player
 	var steps: int = context.steps
-	var best: Piece = null
+	var best: GamePiece = null
 	var best_route = -1
 	for piece in player.pieces:
 		if piece.is_finished or piece.in_jail or piece.is_frozen:

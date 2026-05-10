@@ -5,7 +5,7 @@ extends Node
 ]
 @onready var status_label: Label = $"../UI/GameUI/StatusLabel" 
 
-var Piece = preload("res://scenes/piece.tscn")
+var GamePiece = preload("res://scenes/piece.tscn")
 var card_scene = preload("res://scenes/card_3d.tscn")
 
 var hand_display: HandDisplay
@@ -135,7 +135,7 @@ func _setup_players():
 
 func _spawn_pieces(player):
 	for i in range(4):
-		var piece = Piece.instantiate()
+		var piece = GamePiece.instantiate()
 		piece.player = player
 		piece.piece_id = i
 		piece.board = board
@@ -196,42 +196,10 @@ func _input(event):
 			
 	# DEBUG BARRERAS
 	if event is InputEventKey and event.pressed:
-		
-		# Flecha abajo → armar situación de barrera
-		if event.keycode == KEY_DOWN:
-			var yellow = players[0]
-			var blue = players[1]
-			
-			# Poner 2 fichas amarillas en casilla 0 (barrera)
-			for i in range(2):
-				var p = yellow.pieces[i]
-				p.in_jail = false
-				p.has_completed_lap = false
-				p.route = 0
-				p.current_position = 0
-				p.lap_size = 63
-				p.in_home_path = false
-				p.home_route = 0
-				p.global_position = board.main_path[0].global_position + Vector3(0.04 * (1 if i == 0 else -1), 0.015, 0)
-			
-			# Poner ficha azul en casilla 65, route 48
-			var bp = blue.pieces[0]
-			bp.in_jail = false
-			bp.has_completed_lap = false
-			bp.route = 48
-			bp.current_position = 65
-			bp.lap_size = (blue.home_entry - blue.start_index + 68) % 68
-			bp.in_home_path = false
-			bp.home_route = 0
-			bp.global_position = board.main_path[65].global_position + Vector3(0, 0.015, 0)
-			
-			status_label.text = "DEBUG: barrera amarilla en 0, azul en 65"
-			return
-		
 		# Flecha arriba → forzar dados 3-3 para el turno actual
 		if event.keycode == KEY_UP:
 			turn_manager.current_state = TurnManager.State.IDLE
-			_on_dice_stopped([4, 4])
+			_on_dice_stopped([34, 34])
 			status_label.text = "DEBUG: dados forzados 3-3"
 			return
 	
@@ -384,7 +352,7 @@ func _do_ai_pick_piece():
 		await get_tree().create_timer(0.3).timeout
 		_on_piece_clicked(piece)
 
-func _on_piece_clicked(piece_ref: Piece):
+func _on_piece_clicked(piece_ref: GamePiece):
 	if turn_manager.current_state == TurnManager.State.CARD_TARGET:
 		_handle_card_target(piece_ref)
 		return
@@ -416,7 +384,7 @@ func _on_piece_clicked(piece_ref: Piece):
 	elif turn_manager.current_state == TurnManager.State.PENALTY_JAIL:
 		_execute_penalty(piece_ref)
 
-func _handle_jail_exit(piece: Piece):
+func _handle_jail_exit(piece: GamePiece):
 	var is_pair = turn_manager.current_roll.get("pair", false)
 	
 	if not is_pair:
@@ -446,7 +414,7 @@ func _handle_jail_exit(piece: Piece):
 	piece.jail_exited.connect(_on_jail_exited, CONNECT_ONE_SHOT)
 	piece._leave_jail()
 
-func _on_jail_exited(_piece: Piece):
+func _on_jail_exited(_piece: GamePiece):
 	movement_manager._check_capture(_piece)
 	movement_manager._check_stacking(_piece.current_position)
 	var captured = movement_manager.captured_this_turn
@@ -466,7 +434,7 @@ func _on_jail_exited(_piece: Piece):
 		await get_tree().create_timer(0.8).timeout
 		turn_manager.end_turn()
 
-func _handle_break_barrier_first(piece: Piece):
+func _handle_break_barrier_first(piece: GamePiece):
 	var barrier_pieces = movement_manager.get_barrier_pieces_at(piece.current_position, piece.player)
 	
 	if barrier_pieces.size() < 2:
@@ -485,7 +453,7 @@ func _handle_break_barrier_first(piece: Piece):
 		await get_tree().create_timer(0.75).timeout
 		_do_ai_pick_piece()
 
-func _execute_move(piece: Piece, steps: int):
+func _execute_move(piece: GamePiece, steps: int):
 	var is_pair = turn_manager.current_roll.get("pair", false)
 	var is_own_barrier = false
 	
@@ -497,7 +465,7 @@ func _execute_move(piece: Piece, steps: int):
 	
 	if is_own_barrier:
 		if is_pair:
-			turn_manager.pending_move_piece = piece
+			turn_manager.pending_move_piece = GamePiece
 			turn_manager.pending_move_steps = steps
 			turn_manager.break_barrier_requested.emit()
 			return
@@ -654,7 +622,7 @@ func _cancel_card():
 	turn_manager.current_state = TurnManager.State.IDLE
 	status_label.text = "Turno de " + players[turn_manager.current_player_index].display_name.to_upper() + " — [Espacio] lanzar"
 
-func _handle_card_target(piece: Piece):
+func _handle_card_target(piece: GamePiece):
 	var player = players[turn_manager.current_player_index]
 	var target = card_manager.get_card_target(pending_card_type)
 	
@@ -735,7 +703,7 @@ func _handle_card_target(piece: Piece):
 	status_label.text = "Turno de " + player.display_name.to_upper() + " — [Espacio] lanzar | [Q] cartas"
 	hand_display.hide_hand()
 
-func _on_jailbreak_card_exited(piece: Piece):
+func _on_jailbreak_card_exited(piece: GamePiece):
 	movement_manager._check_capture(piece)
 	movement_manager._check_stacking(piece.current_position)
 	movement_manager.reset_capture_flag()
@@ -751,11 +719,11 @@ func _update_card_display():
 	else:
 		hand_display.hide_hand()
 
-func _execute_penalty(piece: Piece):
+func _execute_penalty(piece: GamePiece):
 	piece._go_to_jail()
 	turn_manager.end_turn()
 
-func _on_capture_happened(_enemy: Piece, bonus: int):
+func _on_capture_happened(_enemy: GamePiece, bonus: int):
 	turn_manager.current_roll["bonus"] = bonus
 
 func _on_piece_finished_signal(_piece_ref):
@@ -883,7 +851,7 @@ func _do_ai_turn(player_index: int):
 	turn_manager.current_state = TurnManager.State.IDLE
 	_roll_dice()
 
-func _ai_pick_card_target(player_index: int, card_type: int) -> Piece:
+func _ai_pick_card_target(player_index: int, card_type: int) -> GamePiece:
 	var player = players[player_index]
 	var main_path_size = board.main_path.size()
 	match card_type:
@@ -902,7 +870,7 @@ func _ai_pick_card_target(player_index: int, card_type: int) -> Piece:
 						return piece
 		CardManager.CardType.FREEZE, CardManager.CardType.SABOTAGE:
 			# primero busca el más adelantado con route >= 30
-			var best: Piece = null
+			var best: GamePiece = null
 			var best_route = -1
 			for enemy_player in players:
 				if enemy_player == player:
@@ -930,7 +898,7 @@ func _ai_pick_card_target(player_index: int, card_type: int) -> Piece:
 							return enemy
 		CardManager.CardType.THIEF:
 			# el enemigo con más cartas
-			var best: Piece = null
+			var best: GamePiece = null
 			var best_cards = -1
 			for enemy_player in players:
 				if enemy_player == player:

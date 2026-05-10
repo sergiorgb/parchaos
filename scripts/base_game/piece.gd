@@ -1,10 +1,10 @@
 extends Node3D
 
-class_name Piece
+class_name GamePiece
 
 signal clicked(piece_ref)
 signal finished(piece_ref)
-signal jail_exited(piece: Piece)
+signal jail_exited(piece: GamePiece)
 signal hovered(piece_ref)
 signal unhovered(piece_ref)
 signal status_message_requested(message: String)
@@ -61,7 +61,6 @@ func _on_mouse_exit():
 	tween.parallel().tween_property(self, "scale", Vector3(1.0, 1.0, 1.0), 0.1)
 
 func _move(steps) -> bool:
-	
 	if is_frozen:
 		status_message_requested.emit("¡Ficha congelada! No puede moverse.")
 		return false
@@ -72,7 +71,11 @@ func _move(steps) -> bool:
 	if has_completed_lap and current_position == player.home_entry:
 		in_home_path = true
 		home_route = 0
-		return await _move_in_home_path(steps)
+		var square = board.home_paths[color][0]
+		await _animate_hop_to(square.global_position)
+		if steps > 1:
+			return await _move_in_home_path(steps - 1)
+		return true
 	
 	var steps_to_entry = _steps_to_entry(current_position)
 	
@@ -82,14 +85,13 @@ func _move(steps) -> bool:
 			current_position = (route + start_index) % board.main_path.size()
 			var square = board.main_path[current_position]
 			await _animate_hop_to(square.global_position)
-			
 			if not has_completed_lap and route == lap_size:
 				has_completed_lap = true
 		
 		if _can_enter_home_path():
 			in_home_path = true
 			home_route = 0
-			var square = board.home_paths[color][home_route]
+			var square = board.home_paths[color][0]
 			await _animate_hop_to(square.global_position)
 		
 		return true
@@ -100,37 +102,28 @@ func _move(steps) -> bool:
 			current_position = (route + start_index) % board.main_path.size()
 			var square = board.main_path[current_position]
 			await _animate_hop_to(square.global_position)
-			
 			if not has_completed_lap and route == lap_size:
 				has_completed_lap = true
 		
 		if _can_enter_home_path():
 			in_home_path = true
 			home_route = 0
+			var square = board.home_paths[color][0]
+			await _animate_hop_to(square.global_position)
 			
-			var remaining = steps - steps_to_entry
-			var max_home_index = board.home_paths[color].size() - 1
-			
-			for i in range(remaining):
-				home_route += 1
-				if home_route >= board.home_paths[color].size():
-					return false
-				var square = board.home_paths[color][home_route]
-				await _animate_hop_to(square.global_position)
-			
-			if home_route == max_home_index:
-				_finish()
+			var remaining = steps - steps_to_entry - 1
+			if remaining > 0:
+				return await _move_in_home_path(remaining)
+			return true
 		else:
-			var remaining = steps - steps_to_entry
 			status_message_requested.emit("¡Debes completar el circuito primero!")
-			
+			var remaining = steps - steps_to_entry
 			for i in range(remaining):
 				route += 1
 				if route >= board.main_path.size():
 					route -= board.main_path.size()
 					if not has_completed_lap:
 						has_completed_lap = true
-				
 				current_position = (route + start_index) % board.main_path.size()
 				var square = board.main_path[current_position]
 				await _animate_hop_to(square.global_position)
@@ -142,7 +135,6 @@ func _move(steps) -> bool:
 		current_position = (route + start_index) % board.main_path.size()
 		var square = board.main_path[current_position]
 		await _animate_hop_to(square.global_position)
-		
 		if not has_completed_lap and route == lap_size:
 			has_completed_lap = true
 	
@@ -151,7 +143,7 @@ func _move(steps) -> bool:
 func _can_enter_home_path() -> bool:
 	return has_completed_lap and current_position == player.home_entry
 
-func _move_in_home_path(steps) -> bool:
+func _move_in_home_path(steps: int) -> bool:
 	var max_home_index = board.home_paths[color].size() - 1
 	var remaining = max_home_index - home_route
 	
