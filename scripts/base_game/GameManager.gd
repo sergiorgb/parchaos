@@ -193,15 +193,6 @@ func _input(event):
 		if key == KEY_ESCAPE:
 			_cancel_card()
 			return
-			
-	# DEBUG BARRERAS
-	if event is InputEventKey and event.pressed:
-		# Flecha arriba → forzar dados 3-3 para el turno actual
-		if event.keycode == KEY_UP:
-			turn_manager.current_state = TurnManager.State.IDLE
-			_on_dice_stopped([34, 34])
-			status_label.text = "DEBUG: dados forzados 3-3"
-			return
 	
 func _draw_card_phase():
 	if is_processing:
