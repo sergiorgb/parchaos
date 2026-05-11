@@ -5,7 +5,7 @@ extends Node
 ]
 @onready var status_label: Label = $"../UI/GameUI/StatusLabel" 
 
-var GamePiece = preload("res://scenes/piece.tscn")
+var Piece = preload("res://scenes/piece.tscn")
 var card_scene = preload("res://scenes/card_3d.tscn")
 
 var hand_display: HandDisplay
@@ -15,6 +15,7 @@ var dice_manager: DiceManager
 var camera_controller: CameraController
 var hover_manager: HoverManager
 var card_manager: CardManager
+var event_manager: EventManager
 var camera: Camera3D
 var ai_controllers: Array = []
 var players = []
@@ -39,8 +40,6 @@ const PLAYER_DATA = [
 	{"id": 3, "color": "green", "name": "verde", "start_index": 51, "home_entry": 46}
 ]
 
-const IS_AI = [true, true, true, true]
-
 func _ready():
 	await get_tree().process_frame
 	board = $"../Board"
@@ -64,6 +63,14 @@ func _ready():
 		card_manager.draw_card(i)
 		card_manager.draw_card(i)
 	
+	var event_label: Label = $"../UI/GameUI/EventLabel"
+	var event_counter_label: Label = $"../UI/GameUI/EventCounterLabel"
+	event_manager = EventManager.new()
+	add_child(event_manager)
+	event_manager.setup(players, turn_manager, movement_manager, event_label, event_counter_label)
+	event_manager.extra_turn_requested.connect(_on_extra_turn_requested)
+	movement_manager.event_manager = event_manager
+	
 	turn_manager.start_turn(0)
 	camera_controller.move_to_player(0, true)
 	is_ready = true
@@ -80,7 +87,7 @@ func _setup_managers():
 	
 	movement_manager = MovementManager.new()
 	add_child(movement_manager)
-	movement_manager.setup(board, players)
+	movement_manager.setup(board, players, event_manager)
 	movement_manager.capture_happened.connect(_on_capture_happened)
 	movement_manager.victory_achieved.connect(_on_victory_achieved)
 	
@@ -88,10 +95,11 @@ func _setup_managers():
 	add_child(turn_manager)
 	turn_manager.setup(players)	
 	turn_manager.turn_started.connect(_on_turn_started)
-	turn_manager.turn_ended.connect(_on_turn_ended)
 	turn_manager.bonus_move_available.connect(_on_bonus_move)
 	turn_manager.penalty_select_piece.connect(_on_penalty)
 	turn_manager.break_barrier_requested.connect(_on_break_barrier_requested)
+	turn_manager.turn_ended.connect(_on_turn_ended)
+	turn_manager.turn_ended_ready_for_next.connect(_on_turn_ready_for_next)
 	
 	hover_manager = HoverManager.new()
 	add_child(hover_manager)
@@ -106,6 +114,7 @@ func _setup_managers():
 		ctrl.setup(config["difficulty"] as AIController.Difficulty)
 		add_child(ctrl)
 		ai_controllers.append(ctrl)
+	
 
 func _setup_card_ui():
 	hand_display = HandDisplay.new()
@@ -135,7 +144,7 @@ func _setup_players():
 
 func _spawn_pieces(player):
 	for i in range(4):
-		var piece = GamePiece.instantiate()
+		var piece = Piece.instantiate()
 		piece.player = player
 		piece.piece_id = i
 		piece.board = board
@@ -193,6 +202,7 @@ func _input(event):
 		if key == KEY_ESCAPE:
 			_cancel_card()
 			return
+			
 	
 func _draw_card_phase():
 	if is_processing:
@@ -276,11 +286,18 @@ func _roll_dice():
 	hand_display.hide_hand()
 	status_label.text = "Lanzando dados..."
 	status_label.visible = true
+	if event_manager.get_handicap_player_id() == turn_manager.current_player_index:
+		turn_manager.double_next_roll = true
 	dice_manager.roll_for_player(turn_manager.current_player_index)
 
 func _on_dice_stopped(results: Array):
 	movement_manager.reset_capture_flag()
-	turn_manager.process_roll(results)
+	var final_results = results
+	if event_manager.is_dados_inversos_active():
+		final_results = event_manager.invert_dice(results)
+		status_label.text = "Dados Inversos: " + str(final_results[0]) + " - " + str(final_results[1])
+		await get_tree().create_timer(1.0).timeout
+	turn_manager.process_roll(final_results)
 	var player = players[turn_manager.current_player_index]
 	var all_in_jail = not player.pieces.any(func(p): return not p.in_jail and not p.is_finished)
 	var is_pair = turn_manager.current_roll.get("pair", false)
@@ -433,6 +450,12 @@ func _handle_break_barrier_first(piece: GamePiece):
 		return
 	
 	var steps = turn_manager.current_roll.get("dice1", 0)
+
+# Verificar antes de mover
+	if not movement_manager.can_move_piece(piece, steps, true):
+		status_label.text = "¡Barrera bloqueada! Una ficha va a la cárcel como penalización"
+		await get_tree().create_timer(1.0).timeout
+
 	await movement_manager.break_barrier(piece, steps)
 	
 	turn_manager.has_broken_barrier_this_turn = true
@@ -456,7 +479,7 @@ func _execute_move(piece: GamePiece, steps: int):
 	
 	if is_own_barrier:
 		if is_pair:
-			turn_manager.pending_move_piece = GamePiece
+			turn_manager.pending_move_piece = Piece
 			turn_manager.pending_move_steps = steps
 			turn_manager.break_barrier_requested.emit()
 			return
@@ -715,6 +738,8 @@ func _execute_penalty(piece: GamePiece):
 	turn_manager.end_turn()
 
 func _on_capture_happened(_enemy: GamePiece, bonus: int):
+	if event_manager.is_tregua_active():
+		return
 	turn_manager.current_roll["bonus"] = bonus
 
 func _on_piece_finished_signal(_piece_ref):
@@ -751,6 +776,8 @@ func _on_turn_started(player_index: int):
 	camera_controller.move_to_player(player_index, false)
 	jail_roll_attempts = 0
 	roll_cooldown = false
+	await event_manager.on_turn_started(player_index)
+	turn_manager.order_reversed = event_manager.is_reversa_active()
 	if game_over:
 		return
 	
@@ -764,9 +791,25 @@ func _on_turn_started(player_index: int):
 	_update_card_display()
 
 func _on_turn_ended(_player_index: int):
+	event_manager.on_turn_ended(_player_index)
 	if game_over:
 		return
 	dice_manager.clear_for_turn_end()
+
+func _on_turn_ready_for_next(next_index: int):
+	if game_over:
+		return
+	if event_manager.processing_extra_turn:
+		return
+	turn_manager.order_reversed = event_manager.is_reversa_active()
+	var correct_next = event_manager.get_next_player_index(turn_manager.current_player_index)
+	turn_manager.start_turn(correct_next)
+
+func _on_extra_turn_requested(player_index: int):
+	if game_over:
+		return
+	dice_manager.clear_for_turn_end()
+	turn_manager.start_turn(player_index)
 
 func _on_victory_achieved(player: Player):
 	game_over = true

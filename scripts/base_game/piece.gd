@@ -289,24 +289,22 @@ func _move_backward(steps: int):
 				in_home_path = false
 				route = (player.home_entry - start_index - 1 + board.main_path.size()) % board.main_path.size()
 				current_position = (route + start_index) % board.main_path.size()
+				has_completed_lap = false
 				
-				if has_completed_lap:
-					has_completed_lap = false
+				# Animar a la casilla de entrada antes de seguir
+				var entry_square = board.main_path[current_position]
+				await _animate_hop_to(entry_square.global_position)
 				
 				var remaining = steps - i - 1
-				
 				for j in range(remaining):
 					route -= 1
 					if route < 0:
 						route += board.main_path.size()
-						if has_completed_lap:
-							has_completed_lap = false
-					
 					current_position = (route + start_index) % board.main_path.size()
 					var square = board.main_path[current_position]
 					await _animate_hop_to(square.global_position)
 				
-				return 
+				return
 			
 			var square = board.home_paths[color][home_route]
 			await _animate_hop_to(square.global_position)

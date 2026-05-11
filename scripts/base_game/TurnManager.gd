@@ -6,6 +6,7 @@ signal turn_ended(player_index: int)
 signal bonus_move_available(steps: int)
 signal penalty_select_piece()
 signal break_barrier_requested()
+signal turn_ended_ready_for_next(next_index: int)
 
 enum State {
 	IDLE,
@@ -30,6 +31,7 @@ var pending_move_steps: int = 0
 var bonus_came_from_dice: int = 0  # 1 o 2
 var double_next_roll: bool = false
 var card_used_this_turn: bool = false
+var order_reversed: bool = false
 
 func setup(p_players: Array):
 	players = p_players
@@ -112,9 +114,8 @@ func end_turn():
 	turn_ended.emit(current_player_index)
 
 	var has_pair = current_roll.get("pair", false)
-	
 	var used_both_dice = current_state in [State.MOVE_DICE_2, State.BONUS_MOVE] or has_broken_barrier_this_turn
-	
+
 	if has_pair and used_both_dice and current_state != State.PENALTY_JAIL:
 		has_broken_barrier_this_turn = false
 		captured_this_turn = false
@@ -122,13 +123,18 @@ func end_turn():
 		start_turn(current_player_index)
 		card_used_this_turn = true
 		return
-	
+
 	for piece in players[current_player_index].pieces:
-		piece.tick_status_effects() 
-	
+		piece.tick_status_effects()
+
 	consecutive_pairs = 0
-	current_player_index = (current_player_index + 1) % players.size()
-	start_turn(current_player_index)
+	var next_index: int
+	if order_reversed:
+		next_index = (current_player_index - 1 + players.size()) % players.size()
+	else:
+		next_index = (current_player_index + 1) % players.size()
+
+	turn_ended_ready_for_next.emit(next_index)
 
 func get_current_steps() -> int:
 	var steps = 0

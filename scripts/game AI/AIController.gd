@@ -235,7 +235,7 @@ func _card_thief(context: Dictionary) -> Variant:
 	for enemy_player in context.board.players:
 		if enemy_player == context.player:
 			continue
-		if context.card_manager.get_hand(enemy_player.player_id).size() >= 4:
+		if context.card_manager.get_hand(enemy_player.player_id).size() >= 2:
 			return idx
 	return null
 

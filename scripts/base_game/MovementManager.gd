@@ -10,11 +10,13 @@ signal movement_denied(message: String)
 var board: GameBoard
 var players: Array = []
 var captured_this_turn: bool = false
+var event_manager = null
 
-func setup(p_board: GameBoard, p_players: Array):
+func setup(p_board: GameBoard, p_players: Array, p_event_manager = null):
 	board = p_board
 	players = p_players
 	captured_this_turn = false
+	event_manager = p_event_manager
 
 func can_move_piece(piece: GamePiece, steps: int, is_pair: bool = false) -> bool:
 	if piece.is_finished or piece.in_jail:
@@ -79,6 +81,15 @@ func get_barrier_pieces_at(target_pos: int, player: Player) -> Array:
 
 func break_barrier(piece: GamePiece, steps: int):
 	var current_pos = piece.current_position
+	
+	if not can_move_piece(piece, steps, true):
+		# No puede moverse — penalización: una ficha aleatoria de la barrera va a la cárcel
+		var barrier = get_barrier_pieces_at(current_pos, piece.player)
+		if barrier.size() > 0:
+			var penalized = barrier[randi() % barrier.size()]
+			penalized._go_to_jail()
+			_check_stacking(current_pos)
+		return
 	
 	var success = await piece._move(steps)
 	if not success:
@@ -148,6 +159,8 @@ func move_piece(piece: GamePiece, steps: int, is_pair: bool = false) -> bool:
 	return true
 
 func _check_capture(piece: GamePiece):
+	if event_manager and event_manager.is_tregua_active():
+		return
 	if piece.current_position in board.SAFE_SQUARES:
 		return
 	
