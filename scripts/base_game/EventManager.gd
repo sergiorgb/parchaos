@@ -75,9 +75,10 @@ var players: Array = []
 var turn_manager: TurnManager = null
 var movement_manager: MovementManager = null
  
-var rounds_since_last_event: int = -1
+var rounds_since_last_event: int = 0
 var current_event_key: String = ""
 var current_event_data: Dictionary = {}
+var current_round_players_completed: Array = []
  
 var tregua_active: bool = false
 var extra_turn_players: Dictionary = {}
@@ -88,7 +89,6 @@ var skip_turn_player_id: int = -1
 var handicap_player_id: int = -1   
 var processing_extra_turn: bool = false
 
-# Wormhole state
 var wormhole_active: bool = false
 var wormhole_turns_remaining: int = 0
 var wormhole_portals: Array = [-1, -1]
@@ -114,12 +114,11 @@ func on_turn_started(player_index: int):
 		turn_manager.end_turn()
 		return
 	
-	if player_index == 0:
-		rounds_since_last_event += 1
-		if rounds_since_last_event >= ROUNDS_BETWEEN_EVENTS:
-			rounds_since_last_event = 0
-			await _trigger_random_event(player_index)
-			return
+	if rounds_since_last_event >= ROUNDS_BETWEEN_EVENTS:
+		rounds_since_last_event = 0
+		await _trigger_random_event(player_index)
+		return
+	
 	
 	if event_counter_label:
 		event_counter_label.text = "Próximo evento en: " + str(get_rounds_until_next_event()) + " rondas"
@@ -140,6 +139,18 @@ func on_turn_started(player_index: int):
 			_show_event_label("Agujero de Gusano cerrado")
  
 func on_turn_ended(player_index: int):
+	if player_index not in current_round_players_completed:
+		current_round_players_completed.append(player_index)
+	
+	if current_round_players_completed.size() >= players.size():
+		rounds_since_last_event += 1
+		current_round_players_completed.clear()
+		
+		if rounds_since_last_event >= ROUNDS_BETWEEN_EVENTS:
+			rounds_since_last_event = 0
+			await _trigger_random_event(turn_manager.current_player_index)
+			return
+	
 	if extra_turn_players.get(player_index, false):
 		var all_jailed = players[player_index].pieces.all(func(p): return p.in_jail)
 		if not all_jailed:
@@ -347,8 +358,6 @@ func _clear_event_label():
 
 func get_rounds_until_next_event() -> int:
 	return ROUNDS_BETWEEN_EVENTS - rounds_since_last_event
-
-# ── Wormhole ─────────────────────────────────────────────
 
 func _apply_wormhole():
 	var board_ref = movement_manager.board if movement_manager else null

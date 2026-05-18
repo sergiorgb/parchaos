@@ -1,6 +1,6 @@
 extends Node
 
-class_name GameBoard
+class_name Board
 
 var main_path = []
 var jail = {}
@@ -72,4 +72,3 @@ func get_random_non_special_squares(count: int) -> Array:
 	
 	candidates.shuffle()
 	return candidates.slice(0, count)
-

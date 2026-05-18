@@ -148,7 +148,7 @@ func _build_card_tree() -> AINode:
 		[CardManager.CardType.JAILBREAK, _card_jailbreak],
 		[CardManager.CardType.SHIELD,    _card_shield],
 		[CardManager.CardType.TURBO,     _card_turbo],
-		[CardManager.CardType.MINE,      _card_mine],
+		[CardManager.CardType.ALLIANCE,      _card_alliance],
 	]
 	if difficulty == Difficulty.HARD:
 		card_checks.append_array([
@@ -156,7 +156,7 @@ func _build_card_tree() -> AINode:
 			[CardManager.CardType.SABOTAGE,  _card_sabotage],
 			[CardManager.CardType.THIEF,     _card_thief],
 			[CardManager.CardType.GHOST,     _card_ghost],
-			[CardManager.CardType.ALLIANCE,  _card_alliance],
+			[CardManager.CardType.MINE,  _card_mine],
 		])
 	card_checks.append([CardManager.CardType.DOUBLE, _card_double])
 
@@ -216,7 +216,7 @@ func _card_sabotage(context: Dictionary) -> Variant:
 		return null
 	return idx if _should_use_offensive(context.player, context.board) else null
 
-func _should_use_offensive(player: Player, board: GameBoard) -> bool:
+func _should_use_offensive(player: Player, board: Board) -> bool:
 	for enemy_player in board.players:
 		if enemy_player == player:
 			continue
@@ -255,7 +255,7 @@ func _card_double(context: Dictionary) -> Variant:
 			return idx
 	return null
 
-func _is_threatened(player: Player, board: GameBoard) -> bool:
+func _is_threatened(player: Player, board: Board) -> bool:
 	for piece in player.pieces:
 		if piece.in_jail or piece.is_finished or piece.is_shielded:
 			continue
@@ -270,14 +270,11 @@ func _is_threatened(player: Player, board: GameBoard) -> bool:
 					return true
 	return false
 
-# ── New card AI decisions ──────────────────────────────────
-
 func _card_mine(context: Dictionary) -> Variant:
 	var hand = context.card_manager.get_hand(context.player.player_id)
 	var idx = _find_card(hand, CardManager.CardType.MINE)
 	if idx == -1:
 		return null
-	# Place mine if hand is getting full or there are active pieces
 	for piece in context.player.pieces:
 		if not piece.in_jail and not piece.is_finished and not piece.in_home_path:
 			return idx
@@ -288,7 +285,6 @@ func _card_ghost(context: Dictionary) -> Variant:
 	var idx = _find_card(hand, CardManager.CardType.GHOST)
 	if idx == -1:
 		return null
-	# Use ghost when threatened
 	return idx if _is_threatened(context.player, context.board) else null
 
 func _card_alliance(context: Dictionary) -> Variant:
@@ -296,7 +292,6 @@ func _card_alliance(context: Dictionary) -> Variant:
 	var idx = _find_card(hand, CardManager.CardType.ALLIANCE)
 	if idx == -1:
 		return null
-	# Propose when losing — total route lower than any enemy
 	var own_route = 0
 	for piece in context.player.pieces:
 		if not piece.is_finished:

@@ -9,19 +9,17 @@ signal movement_denied(message: String)
 signal mine_triggered(piece: GamePiece, mine_owner_id: int)
 signal alliance_expired(player_a: int, player_b: int)
 
-var board: GameBoard
+var board: Board
 var players: Array = []
 var captured_this_turn: bool = false
 var event_manager = null
 
-# Mine system
-var mines: Dictionary = {}          # board_position -> owner_player_id
-var mine_markers: Dictionary = {}   # board_position -> MeshInstance3D
+var mines: Dictionary = {}     
+var mine_markers: Dictionary = {}   
 
-# Alliance system
 var alliances: Array = []  # [{"players": [id_a, id_b], "turns_remaining": int}]
 
-func setup(p_board: GameBoard, p_players: Array, p_event_manager = null):
+func setup(p_board: Board, p_players: Array, p_event_manager = null):
 	board = p_board
 	players = p_players
 	captured_this_turn = false
@@ -192,16 +190,15 @@ func _check_capture(piece: GamePiece):
 			continue
 		if enemy.current_position == enemy.player.home_entry:
 			continue
-		_resolve_capture(enemy, piece)
+		_resolve_capture(enemy, piece, true)
 
-func _resolve_capture(enemy: GamePiece, catcher: GamePiece = null):
+func _resolve_capture(enemy: GamePiece, catcher: GamePiece = null, is_environmental: bool = false):
 	if enemy.is_shielded:
 		movement_denied.emit("¡Ataque bloqueado por Escudo!")
 		return
 	if enemy.is_ghost:
 		movement_denied.emit("¡Ficha fantasma — intangible!")
 		return
-	# Check alliance
 	if catcher and are_allied(catcher.player.player_id, enemy.player.player_id):
 		movement_denied.emit("¡Alianza activa — no se puede capturar!")
 		return
@@ -217,8 +214,11 @@ func _resolve_capture(enemy: GamePiece, catcher: GamePiece = null):
 	enemy.is_ghost = false
 	enemy.ghost_turns = 0
 	enemy._go_to_jail()
-	captured_this_turn = true
-	capture_happened.emit(enemy, 10)
+	if not is_environmental:
+		captured_this_turn = true
+		capture_happened.emit(GamePiece, 20)
+	else:
+		capture_happened.emit(GamePiece, 0)
 
 func _check_stacking(cell_index: int):
 	var pieces_in_cell = []
@@ -254,27 +254,32 @@ func check_victory(player: Player) -> bool:
 func reset_capture_flag():
 	captured_this_turn = false
 
-# ── Mine System ──────────────────────────────────────────
-
 func place_mine(position: int, owner_id: int):
 	mines[position] = owner_id
-	# Create visual marker (dark disc)
-	var cell_node = board.main_path[position]
+	
+	# Obtener la posición global del Marker3D
+	var cell_marker = board.main_path[position]
+	var world_pos = cell_marker.global_position
+	
+	# Crear la mina
 	var marker = MeshInstance3D.new()
 	var mesh = CylinderMesh.new()
 	mesh.top_radius = 0.025
 	mesh.bottom_radius = 0.025
-	mesh.height = 0.005
+	mesh.height = 0.02
 	marker.mesh = mesh
+	
 	var mat = StandardMaterial3D.new()
-	mat.albedo_color = Color(0.15, 0.1, 0.1, 0.9)
+	mat.albedo_color = Color(0.15, 0.1, 0.1, 1)
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.emission_enabled = true
 	mat.emission = Color(0.3, 0.05, 0.05)
 	mat.emission_energy_multiplier = 0.5
 	marker.material_override = mat
-	cell_node.add_child(marker)
-	marker.position = Vector3(0, 0.01, 0)
+	
+	get_tree().current_scene.add_child(marker)
+	marker.global_position = world_pos + Vector3(0, 0.001, 0)
+	
 	mine_markers[position] = marker
 
 func check_mine(piece: GamePiece):

@@ -788,7 +788,7 @@ func _handle_card_target(piece: GamePiece):
 				await movement_manager.move_piece(piece, 5, false)
 				movement_manager._check_stacking(piece.current_position)
 				movement_manager.check_mine(piece)
-				event_manager.check_wormhole(piece)
+				await event_manager.check_wormhole(piece)
 				if movement_manager.captured_this_turn:
 					movement_manager.reset_capture_flag()
 					turn_manager.current_roll["bonus"] = 10
@@ -834,10 +834,8 @@ func _handle_card_target(piece: GamePiece):
 			piece.apply_ghost(1)
 			status_label.text = "FANTASMA: ¡Ficha intangible por 1 turno!"
 		CardManager.CardType.ALLIANCE:
-			# Alliance card — show popup to target player
 			pending_alliance_target_player = piece.player.player_id
 			if piece.player.is_ai:
-				# AI auto-decides
 				var accepted = _ai_decide_alliance(piece.player.player_id, turn_manager.current_player_index)
 				if accepted:
 					movement_manager.add_alliance(turn_manager.current_player_index, piece.player.player_id, 5)
@@ -914,7 +912,12 @@ func _on_penalty():
 	status_label.text = "¡3 pares! Elige ficha para cárcel"
 
 func _on_turn_started(player_index: int):
-	camera_controller.move_to_player(player_index, false)
+	is_processing = true
+	var cam_tween = camera_controller.move_to_player(player_index)
+	if cam_tween:
+		await cam_tween.finished
+	is_processing = false
+	
 	jail_roll_attempts = 0
 	roll_cooldown = false
 	await event_manager.on_turn_started(player_index)
@@ -1263,18 +1266,18 @@ func _on_wormhole_activated(pos_a: int, pos_b: int):
 		var cell_node = board.main_path[pos]
 		var marker = MeshInstance3D.new()
 		var mesh = TorusMesh.new()
-		mesh.inner_radius = 0.02
-		mesh.outer_radius = 0.04
+		mesh.inner_radius = 0.002
+		mesh.outer_radius = 0.004
 		marker.mesh = mesh
 		var mat = StandardMaterial3D.new()
 		mat.albedo_color = Color(0.2, 0.8, 1.0, 0.7)
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		mat.emission_enabled = true
 		mat.emission = Color(0.1, 0.6, 1.0)
-		mat.emission_energy_multiplier = 2.0
+		mat.emission_energy_multiplier = 1.0
 		marker.material_override = mat
 		cell_node.add_child(marker)
-		marker.position = Vector3(0, 0.015, 0)
+		marker.position = Vector3(0, 0.005, 0)
 		wormhole_markers.append(marker)
 
 func _on_wormhole_deactivated():
