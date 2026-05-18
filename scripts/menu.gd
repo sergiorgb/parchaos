@@ -139,4 +139,5 @@ func _on_play_pressed():
 	for i in range(4):
 		GameConfig.player_config[i]["is_ai"] = player_buttons[i].text == "IA"
 		GameConfig.player_config[i]["difficulty"] = difficulty_options[i].selected
+
 	get_tree().change_scene_to_file("res://scenes/main.tscn")

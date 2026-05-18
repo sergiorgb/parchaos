@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dpo51o6kt6tup"
-path="res://.godot/imported/Respaldo.png-544f97f2b268f18d74433cb1775dd5ec.ctex"
+uid="uid://dwx3hy5k2ei1c"
+path="res://.godot/imported/Mina.png-8af44e6285935528294e705dfc5b8c00.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://resources/cards/Respaldo.png"
-dest_files=["res://.godot/imported/Respaldo.png-544f97f2b268f18d74433cb1775dd5ec.ctex"]
+source_file="res://resources/cards/Mina.png"
+dest_files=["res://.godot/imported/Mina.png-8af44e6285935528294e705dfc5b8c00.ctex"]
 
 [params]
 

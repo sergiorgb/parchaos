@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dpo51o6kt6tup"
-path="res://.godot/imported/Respaldo.png-544f97f2b268f18d74433cb1775dd5ec.ctex"
+uid="uid://bnotssa0dvaht"
+path="res://.godot/imported/Alianza.png-2d191176a8370edb626687fb71fae00d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://resources/cards/Respaldo.png"
-dest_files=["res://.godot/imported/Respaldo.png-544f97f2b268f18d74433cb1775dd5ec.ctex"]
+source_file="res://resources/cards/Alianza.png"
+dest_files=["res://.godot/imported/Alianza.png-2d191176a8370edb626687fb71fae00d.ctex"]
 
 [params]
 

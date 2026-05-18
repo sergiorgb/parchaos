@@ -2,7 +2,9 @@ extends Node
 class_name EventManager
  
 signal event_triggered(event_key: String, event_data: Dictionary)
-signal extra_turn_requested(player_index: int) 
+signal extra_turn_requested(player_index: int)
+signal wormhole_activated(pos_a: int, pos_b: int)
+signal wormhole_deactivated()
 
 const ROUNDS_BETWEEN_EVENTS = 3
  
@@ -54,6 +56,18 @@ const EVENTS: Dictionary = {
 		"descripcion": "El orden de juego se invierte por 3 turnos",
 		"condicion": "siempre",
 		"efecto": "invertir_orden"
+	},
+	"agujero_de_gusano": {
+		"nombre": "Agujero de Gusano",
+		"descripcion": "Dos casillas se conectan como portales por 3 rondas",
+		"condicion": "siempre",
+		"efecto": "wormhole"
+	},
+	"terremoto": {
+		"nombre": "Terremoto",
+		"descripcion": "Todas las fichas activas se mueven 1–3 casillas al azar",
+		"condicion": "hay_fichas_en_juego",
+		"efecto": "earthquake"
 	}
 }
 
@@ -72,7 +86,12 @@ var reversa_active: bool = false
 var reversa_turns_remaining: int = 0
 var skip_turn_player_id: int = -1   
 var handicap_player_id: int = -1   
-var processing_extra_turn: bool = false 
+var processing_extra_turn: bool = false
+
+# Wormhole state
+var wormhole_active: bool = false
+var wormhole_turns_remaining: int = 0
+var wormhole_portals: Array = [-1, -1]
  
 var event_label: Label = null
 var event_counter_label: Label = null
@@ -111,6 +130,14 @@ func on_turn_started(player_index: int):
 		if reversa_turns_remaining <= 0:
 			reversa_active = false
 			_show_event_label("Reversa terminada — orden normal restaurado")
+	
+	if wormhole_active:
+		wormhole_turns_remaining -= 1
+		if wormhole_turns_remaining <= 0:
+			wormhole_active = false
+			wormhole_portals = [-1, -1]
+			wormhole_deactivated.emit()
+			_show_event_label("Agujero de Gusano cerrado")
  
 func on_turn_ended(player_index: int):
 	if extra_turn_players.get(player_index, false):
@@ -217,18 +244,20 @@ func _apply_event(key: String, player_index: int):
 		"caos":
 			_show_event_label("¡Caos! Todas las fichas retroceden 2...")
 			await get_tree().create_timer(0.5).timeout
+			var affected_pieces = []
 			for p in players:
 				for piece in p.pieces:
 					if not piece.in_jail and not piece.is_finished:
 						await piece._move_backward(2)
-			# Reajustar stacking de todas las casillas afectadas
+						affected_pieces.append(piece)
+			# Reajustar stacking y aplicar efectos de tablero
 			var checked_positions = []
-			for p in players:
-				for piece in p.pieces:
-					if not piece.in_jail and not piece.is_finished:
-						if not piece.current_position in checked_positions:
-							checked_positions.append(piece.current_position)
-							movement_manager._check_stacking(piece.current_position)
+			for piece in affected_pieces:
+				if not piece.current_position in checked_positions:
+					checked_positions.append(piece.current_position)
+					movement_manager._check_stacking(piece.current_position)
+				movement_manager.check_mine(piece)
+				await check_wormhole(piece)
  
 		"turno_extra":
 			for i in range(players.size()):
@@ -253,6 +282,12 @@ func _apply_event(key: String, player_index: int):
 			reversa_active = true
 			reversa_turns_remaining = ROUNDS_BETWEEN_EVENTS + players.size()
 			_show_event_label("¡Orden invertido por " + str(ROUNDS_BETWEEN_EVENTS) + " rondas!")
+
+		"agujero_de_gusano":
+			await _apply_wormhole()
+
+		"terremoto":
+			await _apply_terremoto()
  
 func _apply_ruleta_carcel():
 	for p in players:
@@ -312,3 +347,75 @@ func _clear_event_label():
 
 func get_rounds_until_next_event() -> int:
 	return ROUNDS_BETWEEN_EVENTS - rounds_since_last_event
+
+# ── Wormhole ─────────────────────────────────────────────
+
+func _apply_wormhole():
+	var board_ref = movement_manager.board if movement_manager else null
+	if not board_ref:
+		return
+	var squares = board_ref.get_random_non_special_squares(2)
+	if squares.size() < 2:
+		return
+	wormhole_portals = [squares[0], squares[1]]
+	wormhole_active = true
+	wormhole_turns_remaining = 3 * players.size()
+	_show_event_label("¡Portales abiertos en casillas " + str(squares[0]) + " y " + str(squares[1]) + "!")
+	wormhole_activated.emit(squares[0], squares[1])
+
+func check_wormhole(piece: GamePiece):
+	if not wormhole_active:
+		return
+	if piece.in_home_path or piece.in_jail or piece.is_finished:
+		return
+	var pos = piece.current_position
+	var target = -1
+	if pos == wormhole_portals[0]:
+		target = wormhole_portals[1]
+	elif pos == wormhole_portals[1]:
+		target = wormhole_portals[0]
+	else:
+		return
+	
+	# Teleport piece
+	var board_ref = movement_manager.board
+	var target_square = board_ref.main_path[target]
+	_show_event_label("¡" + piece.player.display_name.to_upper() + " entra al Agujero de Gusano!")
+	
+	# Update piece position data
+	piece.current_position = target
+	piece.route = (target - piece.start_index + board_ref.main_path.size()) % board_ref.main_path.size()
+	await piece._animate_hop_to(target_square.global_position)
+	movement_manager._check_stacking(target)
+	movement_manager._check_capture(piece)
+
+# ── Terremoto (Earthquake) ───────────────────────────────
+
+func _apply_terremoto():
+	_show_event_label("¡TERREMOTO! Todas las fichas se sacuden...")
+	await get_tree().create_timer(0.5).timeout
+	
+	var affected_pieces = []
+	for p in players:
+		for piece in p.pieces:
+			if piece.in_jail or piece.is_finished or piece.in_home_path:
+				continue
+			var shift = randi_range(1, 3)
+			var direction = 1 if randi() % 2 == 0 else -1
+			shift *= direction
+			
+			if shift > 0:
+				await piece._move(shift)
+			else:
+				await piece._move_backward(abs(shift))
+			
+			affected_pieces.append(piece)
+	
+	# Recheck stacking and board effects on all affected positions
+	var checked_positions = []
+	for piece in affected_pieces:
+		if not piece.current_position in checked_positions:
+			checked_positions.append(piece.current_position)
+			movement_manager._check_stacking(piece.current_position)
+		movement_manager.check_mine(piece)
+		await check_wormhole(piece)

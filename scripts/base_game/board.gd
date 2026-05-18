@@ -56,3 +56,20 @@ func _get_enemies_at(target_position: int, catcher_player_id: int):
 				if not piece.in_jail and not piece.is_finished and piece.current_position == target_position:
 					enemies.append(piece)
 	return enemies
+
+func get_random_non_special_squares(count: int) -> Array:
+	var excluded = SAFE_SQUARES.duplicate()
+	for player in players:
+		if not player.start_index in excluded:
+			excluded.append(player.start_index)
+		if not player.home_entry in excluded:
+			excluded.append(player.home_entry)
+	
+	var candidates = []
+	for i in range(main_path.size()):
+		if i not in excluded:
+			candidates.append(i)
+	
+	candidates.shuffle()
+	return candidates.slice(0, count)
+
