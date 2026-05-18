@@ -193,13 +193,13 @@ func _check_capture(piece: GamePiece):
 		_resolve_capture(enemy, piece, true)
 
 func _resolve_capture(enemy: GamePiece, catcher: GamePiece = null, is_environmental: bool = false):
-	if enemy.is_shielded:
+	if enemy.is_shielded and not is_environmental:
 		movement_denied.emit("¡Ataque bloqueado por Escudo!")
 		return
-	if enemy.is_ghost:
+	if enemy.is_ghost and not is_environmental:
 		movement_denied.emit("¡Ficha fantasma — intangible!")
 		return
-	if catcher and are_allied(catcher.player.player_id, enemy.player.player_id):
+	if catcher and are_allied(catcher.player.player_id, enemy.player.player_id) and not is_environmental:
 		movement_denied.emit("¡Alianza activa — no se puede capturar!")
 		return
 	enemy.in_jail = true
