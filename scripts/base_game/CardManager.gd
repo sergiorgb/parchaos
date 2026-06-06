@@ -8,10 +8,7 @@ enum CardType {
 	SABOTAGE,
 	FREEZE,
 	DOUBLE,
-	THIEF,
-	MINE,
-	GHOST,
-	ALLIANCE
+	THIEF
 }
 
 const CARD_INFO = {
@@ -22,10 +19,7 @@ const CARD_INFO = {
 	CardType.FREEZE:    {"name": "Hielo",     "icon": "[H]", "desc": "Congela ficha enemiga 1 turno",     "target": "enemy"},
 	CardType.DOUBLE:    {"name": "Doble",     "icon": "[D]", "desc": "Duplica siguiente lanzamiento",     "target": "none"},
 	CardType.THIEF:     {"name": "Ladron",    "icon": "[L]", "desc": "Roba carta a otro jugador",         "target": "enemy_any"},
-	CardType.MINE:      {"name": "Mina",      "icon": "[M]", "desc": "Coloca una mina en tu casilla",     "target": "own"},
-	CardType.GHOST:     {"name": "Fantasma",  "icon": "[G]", "desc": "Ficha intangible por 1 turno",      "target": "own"},
-	CardType.ALLIANCE:  {"name": "Alianza",   "icon": "[A]", "desc": "Sin capturas mutuas por 5 turnos", "target": "enemy_any"},
-}
+}	 
 
 signal card_drawn(player_index: int, card_type: int)
 signal card_used(player_index: int, card_type: int)

@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://cdbkbki0tlgpm"]
+
+[ext_resource type="Script" uid="uid://chi5pn4nii5hb" path="res://generador_grafo.gd" id="1_l5gb3"]
+
+[node name="GeneradorGrafo" type="Node" unique_id=347057201]
+script = ExtResource("1_l5gb3")
+generar_archivo_ahora = true

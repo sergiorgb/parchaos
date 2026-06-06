@@ -11,10 +11,7 @@ const TEXTURES = {
 	3:  "res://resources/cards/Sabotaje.png",
 	4:  "res://resources/cards/Hielo.png",
 	5:  "res://resources/cards/Doble.png",
-	6:  "res://resources/cards/Ladron.png",
-	7:  "res://resources/cards/Mina.png",
-	8:  "res://resources/cards/Fantasma.png",
-	9:  "res://resources/cards/Alianza.png",
+	6:  "res://resources/cards/Lagron.png"
 }
 
 var front_material: StandardMaterial3D

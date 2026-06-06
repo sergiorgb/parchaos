@@ -3,16 +3,13 @@ extends Control
 
 const CARD_TEXTURES = {
 	-1: preload("res://resources/cards/Respaldo.png"),
-	0: preload("res://resources/cards/Turbo.png"),
-	1: preload("res://resources/cards/Escudo.png"),
-	2: preload("res://resources/cards/Fuga.png"),
-	3: preload("res://resources/cards/Sabotaje.png"),
-	4: preload("res://resources/cards/Hielo.png"),
-	5: preload("res://resources/cards/Doble.png"),
-	6: preload("res://resources/cards/Ladron.png"),
-	7: preload("res://resources/cards/Mina.png"),
-	8: preload("res://resources/cards/Fantasma.png"),
-	9: preload("res://resources/cards/Alianza.png"),
+	0:  preload("res://resources/cards/Turbo.png"),
+	1:  preload("res://resources/cards/Escudo.png"),
+	2:  preload("res://resources/cards/Fuga.png"),
+	3:  preload("res://resources/cards/Sabotaje.png"),
+	4:  preload("res://resources/cards/Hielo.png"),
+	5:  preload("res://resources/cards/Doble.png"),
+	6:  preload("res://resources/cards/Ladron.png")
 }
 
 const CARD_SIZE = Vector2(180, 260)
@@ -22,7 +19,7 @@ signal card_clicked(card_index: int, screen_position: Vector2)
 var card_nodes: Array = []
 
 func setup():
-	position = Vector2.ZERO
+	position = Vector2.ZERO 
 	anchor_left = 0.0
 	anchor_right = 1.0
 	anchor_top = 0.0
@@ -47,7 +44,7 @@ func show_hand(hand: Array):
 		var card = TextureRect.new()
 		card.texture = CARD_TEXTURES.get(hand[i], CARD_TEXTURES[-1])
 		card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		card.stretch_mode = TextureRect.STRETCH_SCALE
 		card.z_index = i
 		card.position = Vector2(start_x + i * (CARD_SIZE.x + 10), base_y)
 		
@@ -64,11 +61,11 @@ func show_hand(hand: Array):
 		# Hover efecto
 		card.mouse_entered.connect(func():
 			var tween = create_tween()
-			tween.tween_property(card, "position:y", base_y - 60, 0.1)
+			tween.tween_property(card, "position:y", card.position.y - 15, 0.1)
 		)
 		card.mouse_exited.connect(func():
 			var tween = create_tween()
-			tween.tween_property(card, "position:y", base_y, 0.1)
+			tween.tween_property(card, "position:y", card.position.y + 15, 0.1)
 		)
 		
 		add_child(card)

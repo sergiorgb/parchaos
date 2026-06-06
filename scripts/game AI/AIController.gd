@@ -87,10 +87,7 @@ func _check_capture(context: Dictionary) -> GamePiece:
 		if target_pos in context.board.SAFE_SQUARES:
 			continue
 		var enemies = context.board._get_enemies_at(target_pos, player.player_id)
-		if enemies.size() == 1 and not enemies[0].is_shielded and not enemies[0].is_ghost:
-			# Check alliance — don't try to capture allied players
-			if context.movement_manager.are_allied(player.player_id, enemies[0].player.player_id):
-				continue
+		if enemies.size() == 1 and not enemies[0].is_shielded:
 			return piece
 	return null
 
@@ -148,15 +145,12 @@ func _build_card_tree() -> AINode:
 		[CardManager.CardType.JAILBREAK, _card_jailbreak],
 		[CardManager.CardType.SHIELD,    _card_shield],
 		[CardManager.CardType.TURBO,     _card_turbo],
-		[CardManager.CardType.ALLIANCE,      _card_alliance],
 	]
 	if difficulty == Difficulty.HARD:
 		card_checks.append_array([
-			[CardManager.CardType.FREEZE,    _card_freeze],
-			[CardManager.CardType.SABOTAGE,  _card_sabotage],
-			[CardManager.CardType.THIEF,     _card_thief],
-			[CardManager.CardType.GHOST,     _card_ghost],
-			[CardManager.CardType.MINE,  _card_mine],
+			[CardManager.CardType.FREEZE,   _card_freeze],
+			[CardManager.CardType.SABOTAGE, _card_sabotage],
+			[CardManager.CardType.THIEF,    _card_thief],
 		])
 	card_checks.append([CardManager.CardType.DOUBLE, _card_double])
 
@@ -216,7 +210,7 @@ func _card_sabotage(context: Dictionary) -> Variant:
 		return null
 	return idx if _should_use_offensive(context.player, context.board) else null
 
-func _should_use_offensive(player: Player, board: Board) -> bool:
+func _should_use_offensive(player: Player, board: GameBoard) -> bool:
 	for enemy_player in board.players:
 		if enemy_player == player:
 			continue
@@ -241,7 +235,7 @@ func _card_thief(context: Dictionary) -> Variant:
 	for enemy_player in context.board.players:
 		if enemy_player == context.player:
 			continue
-		if context.card_manager.get_hand(enemy_player.player_id).size() >= 2:
+		if context.card_manager.get_hand(enemy_player.player_id).size() >= 4:
 			return idx
 	return null
 
@@ -255,7 +249,7 @@ func _card_double(context: Dictionary) -> Variant:
 			return idx
 	return null
 
-func _is_threatened(player: Player, board: Board) -> bool:
+func _is_threatened(player: Player, board: GameBoard) -> bool:
 	for piece in player.pieces:
 		if piece.in_jail or piece.is_finished or piece.is_shielded:
 			continue
@@ -269,40 +263,3 @@ func _is_threatened(player: Player, board: Board) -> bool:
 				if dist <= 12:
 					return true
 	return false
-
-func _card_mine(context: Dictionary) -> Variant:
-	var hand = context.card_manager.get_hand(context.player.player_id)
-	var idx = _find_card(hand, CardManager.CardType.MINE)
-	if idx == -1:
-		return null
-	for piece in context.player.pieces:
-		if not piece.in_jail and not piece.is_finished and not piece.in_home_path:
-			return idx
-	return null
-
-func _card_ghost(context: Dictionary) -> Variant:
-	var hand = context.card_manager.get_hand(context.player.player_id)
-	var idx = _find_card(hand, CardManager.CardType.GHOST)
-	if idx == -1:
-		return null
-	return idx if _is_threatened(context.player, context.board) else null
-
-func _card_alliance(context: Dictionary) -> Variant:
-	var hand = context.card_manager.get_hand(context.player.player_id)
-	var idx = _find_card(hand, CardManager.CardType.ALLIANCE)
-	if idx == -1:
-		return null
-	var own_route = 0
-	for piece in context.player.pieces:
-		if not piece.is_finished:
-			own_route += piece.route
-	for enemy_player in context.board.players:
-		if enemy_player == context.player:
-			continue
-		var enemy_route = 0
-		for ep in enemy_player.pieces:
-			if not ep.is_finished:
-				enemy_route += ep.route
-		if enemy_route > own_route + 15:
-			return idx
-	return null

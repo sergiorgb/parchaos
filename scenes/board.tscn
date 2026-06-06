@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cr07kk1t6vnkv"]
 
 [ext_resource type="PackedScene" uid="uid://dmpm1ftm5y3p0" path="res://resources/mesa.glb" id="1_bw3vb"]
-[ext_resource type="Script" path="res://scripts/base_game/Board.gd" id="1_tx6nw"]
+[ext_resource type="Script" uid="uid://t25u5r71dkpf" path="res://scripts/base_game/board.gd" id="1_tx6nw"]
 
 [node name="Board" type="Node3D" unique_id=1352643309]
 script = ExtResource("1_tx6nw")
@@ -12,6 +12,7 @@ script = ExtResource("1_tx6nw")
 transform = Transform3D(5, 0, 0, 0, 4.755283, 1.545085, 0, -1.545085, 4.755283, -0.004, 1.25, 3.56)
 
 [node name="Jail" type="Node3D" parent="." unique_id=1647134460]
+visible = false
 
 [node name="Yellow 1" type="Marker3D" parent="Jail" unique_id=784790799]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.43798995, 0.02328065, 0.38651022)
@@ -63,6 +64,7 @@ transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.4328711, 0.02328065, 0.590
 
 [node name="Main_Path" type="Node3D" parent="." unique_id=531020007]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0)
+visible = false
 
 [node name="Square0" type="Marker3D" parent="Main_Path" unique_id=1346861962]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.03438387, 0.00465613, 0.08366214)
@@ -269,6 +271,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.033909228, 0.00465613, 0.11
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.034211565, 0.00465613, 0.09866697)
 
 [node name="Yellow_Path" type="Node3D" parent="." unique_id=1765634649]
+visible = false
 
 [node name="Yellow 1" type="Marker3D" parent="Yellow_Path" unique_id=595880398]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.00065392256, 0.02328065, 0.64169216)
@@ -295,6 +298,7 @@ transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.00064224005, 0.02328065, 0
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.00064224005, 0.02328065, 0.1284202)
 
 [node name="Blue_Path" type="Node3D" parent="." unique_id=157880968]
+visible = false
 
 [node name="Blue 1" type="Marker3D" parent="Blue_Path" unique_id=1232610083]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.6608294, 0.02328065, -0.021745084)
@@ -321,6 +325,7 @@ transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.22532603, 0.02328065, -0.02
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.1514459, 0.02328065, -0.025226898)
 
 [node name="Red_Path" type="Node3D" parent="." unique_id=1567919218]
+visible = false
 
 [node name="Red 1" type="Marker3D" parent="Red_Path" unique_id=819936778]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.00094409287, 0.02328065, -0.6808332)
@@ -347,6 +352,7 @@ transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.0039677173, 0.02328065, -0.
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.0006144792, 0.02328065, -0.16681483)
 
 [node name="Green_Path" type="Node3D" parent="." unique_id=1778280719]
+visible = false
 
 [node name="Green 1" type="Marker3D" parent="Green_Path" unique_id=1389953841]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.65678144, 0.02328065, -0.0224731)
@@ -371,53 +377,69 @@ transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.2198658, 0.02328065, -0.02
 
 [node name="Green 8" type="Marker3D" parent="Green_Path" unique_id=1231572578]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.14729857, 0.02328065, -0.02549674)
+visible = false
 
 [node name="Finish" type="Node3D" parent="." unique_id=1484102797]
 
 [node name="yellow_1" type="Marker3D" parent="Finish" unique_id=497840475]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.00064224005, 0.02328065, 0.0674644)
+visible = false
 
 [node name="yellow_2" type="Marker3D" parent="Finish" unique_id=1091670321]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.08350402, 0.02328065, 0.1284202)
+visible = false
 
 [node name="yellow_3" type="Marker3D" parent="Finish" unique_id=940235516]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.00064224005, 0.02328065, 0.1284202)
+visible = false
 
 [node name="yellow_4" type="Marker3D" parent="Finish" unique_id=1022899441]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.087934196, 0.02328065, 0.1284202)
+visible = false
 
 [node name="blue_1" type="Marker3D" parent="Finish" unique_id=1280124960]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.087632746, 0.02328065, -0.024337372)
+visible = false
 
 [node name="blue_2" type="Marker3D" parent="Finish" unique_id=1753225703]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.1514459, 0.02328065, 0.06614391)
+visible = false
 
 [node name="blue_3" type="Marker3D" parent="Finish" unique_id=2034877000]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.1514459, 0.02328065, -0.024337372)
 
 [node name="blue_4" type="Marker3D" parent="Finish" unique_id=1723981831]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.1514459, 0.02328065, -0.10815161)
+visible = false
 
 [node name="red_1" type="Marker3D" parent="Finish" unique_id=1456930929]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.0007172972, 0.02328065, -0.11062119)
+visible = false
 
 [node name="red_2" type="Marker3D" parent="Finish" unique_id=644965467]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, 0.086436406, 0.02328065, -0.16681483)
+visible = false
 
 [node name="red_3" type="Marker3D" parent="Finish" unique_id=1724279448]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.00023506582, 0.02328065, -0.16681483)
+visible = false
 
 [node name="red_4" type="Marker3D" parent="Finish" unique_id=883010733]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.08309685, 0.02328065, -0.16681483)
+visible = false
 
 [node name="green_1" type="Marker3D" parent="Finish" unique_id=1716047405]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.083485484, 0.02328065, -0.02549674)
+visible = false
 
 [node name="green_2" type="Marker3D" parent="Finish" unique_id=173231254]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.14729857, 0.02328065, -0.11026339)
+visible = false
 
 [node name="green_3" type="Marker3D" parent="Finish" unique_id=1132873529]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.14729857, 0.02328065, -0.02549674)
+visible = false
 
 [node name="green_4" type="Marker3D" parent="Finish" unique_id=2048704218]
 transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -0.14729857, 0.02328065, 0.06403212)
+visible = false

@@ -5,7 +5,7 @@ extends Node
 ]
 @onready var status_label: Label = $"../UI/GameUI/StatusLabel" 
 
-var Piece = preload("res://scenes/piece.tscn")
+var GamePiece = preload("res://scenes/piece.tscn")
 var card_scene = preload("res://scenes/card_3d.tscn")
 
 var hand_display: HandDisplay
@@ -15,7 +15,6 @@ var dice_manager: DiceManager
 var camera_controller: CameraController
 var hover_manager: HoverManager
 var card_manager: CardManager
-var event_manager: EventManager
 var camera: Camera3D
 var ai_controllers: Array = []
 var players = []
@@ -30,9 +29,6 @@ var pending_card_type: int = -1
 var roll_cooldown: bool = false
 var jail_roll_attempts: int = 0
 var is_ready: bool = false
-var pending_alliance_target_player: int = -1
-var alliance_popup: PanelContainer = null
-var wormhole_markers: Array = []  # [MeshInstance3D, MeshInstance3D]
 const MAX_JAIL_ROLLS = 3
 const ROLL_COOLDOWN_TIME = 1.5
 
@@ -43,7 +39,10 @@ const PLAYER_DATA = [
 	{"id": 3, "color": "green", "name": "verde", "start_index": 51, "home_entry": 46}
 ]
 
+const IS_AI = [true, true, true, true]
+
 func _ready():
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	await get_tree().process_frame
 	board = $"../Board"
 	board._fill_jail()
@@ -66,21 +65,6 @@ func _ready():
 		card_manager.draw_card(i)
 		card_manager.draw_card(i)
 	
-	var event_label: Label = $"../UI/GameUI/EventLabel"
-	var event_counter_label: Label = $"../UI/GameUI/EventCounterLabel"
-	
-	_setup_ui_styles(event_label, event_counter_label)
-	
-	event_manager = EventManager.new()
-	add_child(event_manager)
-	event_manager.setup(players, turn_manager, movement_manager, event_label, event_counter_label)
-	event_manager.extra_turn_requested.connect(_on_extra_turn_requested)
-	event_manager.wormhole_activated.connect(_on_wormhole_activated)
-	event_manager.wormhole_deactivated.connect(_on_wormhole_deactivated)
-	movement_manager.event_manager = event_manager
-	movement_manager.mine_triggered.connect(_on_mine_triggered)
-	movement_manager.alliance_expired.connect(_on_alliance_expired)
-	
 	turn_manager.start_turn(0)
 	camera_controller.move_to_player(0, true)
 	is_ready = true
@@ -97,7 +81,7 @@ func _setup_managers():
 	
 	movement_manager = MovementManager.new()
 	add_child(movement_manager)
-	movement_manager.setup(board, players, event_manager)
+	movement_manager.setup(board, players)
 	movement_manager.capture_happened.connect(_on_capture_happened)
 	movement_manager.victory_achieved.connect(_on_victory_achieved)
 	
@@ -105,11 +89,10 @@ func _setup_managers():
 	add_child(turn_manager)
 	turn_manager.setup(players)	
 	turn_manager.turn_started.connect(_on_turn_started)
+	turn_manager.turn_ended.connect(_on_turn_ended)
 	turn_manager.bonus_move_available.connect(_on_bonus_move)
 	turn_manager.penalty_select_piece.connect(_on_penalty)
 	turn_manager.break_barrier_requested.connect(_on_break_barrier_requested)
-	turn_manager.turn_ended.connect(_on_turn_ended)
-	turn_manager.turn_ended_ready_for_next.connect(_on_turn_ready_for_next)
 	
 	hover_manager = HoverManager.new()
 	add_child(hover_manager)
@@ -124,7 +107,6 @@ func _setup_managers():
 		ctrl.setup(config["difficulty"] as AIController.Difficulty)
 		add_child(ctrl)
 		ai_controllers.append(ctrl)
-	
 
 func _setup_card_ui():
 	hand_display = HandDisplay.new()
@@ -133,93 +115,6 @@ func _setup_card_ui():
 	hand_display.setup()
 	hand_display.card_clicked.connect(_on_hand_card_clicked)
 	hand_display.hide_hand()
-
-func _setup_ui_styles(event_label: Label, event_counter_label: Label):
-	var ui = $"../UI/GameUI"
-	ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT) # Fix off-screen anchors
-	
-	# Main container for both panels, anchored to TOP RIGHT
-	var main_vbox = VBoxContainer.new()
-	main_vbox.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	main_vbox.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	main_vbox.offset_top = 15
-	main_vbox.offset_right = -15
-	main_vbox.add_theme_constant_override("separation", 10)
-	ui.add_child(main_vbox)
-	
-	# Status Label (Turn thing)
-	var status_panel = PanelContainer.new()
-	var status_style = StyleBoxFlat.new()
-	status_style.bg_color = Color(0.08, 0.08, 0.12, 0.9)
-	status_style.set_corner_radius_all(16)
-	status_style.set_border_width_all(2)
-	status_style.border_color = Color(0.9, 0.7, 0.2, 0.6)
-	status_style.content_margin_left = 20
-	status_style.content_margin_right = 20
-	status_style.content_margin_top = 10
-	status_style.content_margin_bottom = 10
-	status_panel.add_theme_stylebox_override("panel", status_style)
-	
-	status_label.get_parent().remove_child(status_label)
-	status_panel.add_child(status_label)
-	main_vbox.add_child(status_panel)
-	
-	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	
-	# Fix legibility: clear black modulate from scene
-	status_label.modulate = Color(1, 1, 1, 1)
-	status_label.self_modulate = Color(1, 1, 1, 1)
-	
-	var font_settings = LabelSettings.new()
-	font_settings.font_size = 18
-	font_settings.font_color = Color(0.95, 0.95, 0.95)
-	status_label.label_settings = font_settings
-	
-	# Event Labels (Next Event & Current Event)
-	var event_panel = PanelContainer.new()
-	var event_style = StyleBoxFlat.new()
-	event_style.bg_color = Color(0.12, 0.08, 0.18, 0.9)
-	event_style.set_corner_radius_all(16)
-	event_style.set_border_width_all(2)
-	event_style.border_color = Color(0.6, 0.4, 0.9, 0.6)
-	event_style.content_margin_left = 15
-	event_style.content_margin_right = 15
-	event_style.content_margin_top = 15
-	event_style.content_margin_bottom = 15
-	event_panel.add_theme_stylebox_override("panel", event_style)
-	
-	var event_vbox = VBoxContainer.new()
-	event_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	event_vbox.add_theme_constant_override("separation", 8)
-	event_panel.add_child(event_vbox)
-	
-	event_label.get_parent().remove_child(event_label)
-	event_counter_label.get_parent().remove_child(event_counter_label)
-	
-	event_vbox.add_child(event_counter_label)
-	event_vbox.add_child(event_label)
-	main_vbox.add_child(event_panel)
-	
-	# Force both to be identically sized and aligned
-	main_vbox.custom_minimum_size = Vector2(550, 0)
-	status_panel.size_flags_horizontal = Control.SIZE_FILL
-	event_panel.size_flags_horizontal = Control.SIZE_FILL
-	
-	event_counter_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	event_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	event_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	
-	var count_settings = LabelSettings.new()
-	count_settings.font_size = 18
-	count_settings.font_color = Color(0.6, 0.8, 1.0)
-	event_counter_label.label_settings = count_settings
-	
-	var title_settings = LabelSettings.new()
-	title_settings.font_size = 16
-	title_settings.font_color = Color(0.9, 0.7, 1.0)
-	event_label.label_settings = title_settings
 
 func _on_hand_card_clicked(card_index: int, screen_position: Vector2):
 	if turn_manager.current_state not in [TurnManager.State.IDLE, TurnManager.State.DRAW_PHASE]:
@@ -241,7 +136,7 @@ func _setup_players():
 
 func _spawn_pieces(player):
 	for i in range(4):
-		var piece = Piece.instantiate()
+		var piece = GamePiece.instantiate()
 		piece.player = player
 		piece.piece_id = i
 		piece.board = board
@@ -300,6 +195,14 @@ func _input(event):
 			_cancel_card()
 			return
 			
+	# DEBUG BARRERAS
+	if event is InputEventKey and event.pressed:
+		# Flecha arriba → forzar dados 3-3 para el turno actual
+		if event.keycode == KEY_UP:
+			turn_manager.current_state = TurnManager.State.IDLE
+			_on_dice_stopped([34, 34])
+			status_label.text = "DEBUG: dados forzados 3-3"
+			return
 	
 func _draw_card_phase():
 	if is_processing:
@@ -383,18 +286,11 @@ func _roll_dice():
 	hand_display.hide_hand()
 	status_label.text = "Lanzando dados..."
 	status_label.visible = true
-	if event_manager.get_handicap_player_id() == turn_manager.current_player_index:
-		turn_manager.double_next_roll = true
 	dice_manager.roll_for_player(turn_manager.current_player_index)
 
 func _on_dice_stopped(results: Array):
 	movement_manager.reset_capture_flag()
-	var final_results = results
-	if event_manager.is_dados_inversos_active():
-		final_results = event_manager.invert_dice(results)
-		status_label.text = "Dados Inversos: " + str(final_results[0]) + " - " + str(final_results[1])
-		await get_tree().create_timer(1.0).timeout
-	turn_manager.process_roll(final_results)
+	turn_manager.process_roll(results)
 	var player = players[turn_manager.current_player_index]
 	var all_in_jail = not player.pieces.any(func(p): return not p.in_jail and not p.is_finished)
 	var is_pair = turn_manager.current_roll.get("pair", false)
@@ -547,34 +443,16 @@ func _handle_break_barrier_first(piece: GamePiece):
 		return
 	
 	var steps = turn_manager.current_roll.get("dice1", 0)
-
-# Verificar antes de mover
-	if not movement_manager.can_move_piece(piece, steps, true):
-		status_label.text = "¡Barrera bloqueada! Una ficha va a la cárcel como penalización"
-		await get_tree().create_timer(1.0).timeout
-
 	await movement_manager.break_barrier(piece, steps)
 	
-	var captured = movement_manager.captured_this_turn
-	movement_manager.reset_capture_flag()
-	
 	turn_manager.has_broken_barrier_this_turn = true
+	turn_manager.current_state = TurnManager.State.MOVE_DICE_2
 	
-	if captured:
-		turn_manager.current_roll["bonus"] = 10
-		turn_manager.current_state = TurnManager.State.BONUS_MOVE
-		turn_manager.bonus_came_from_dice = 1
-		turn_manager.bonus_move_available.emit(10)
-		status_label.text = "¡Captura al romper barrera! Bonus de 10 pasos"
-		if players[turn_manager.current_player_index].is_ai:
-			await get_tree().create_timer(0.75).timeout
-			_do_ai_pick_piece()
-	else:
-		turn_manager.current_state = TurnManager.State.MOVE_DICE_2
-		status_label.text = "Barrera rota! Ahora mueve " + str(turn_manager.current_roll.get("dice2", 0)) + " pasos con otra ficha"
-		if players[turn_manager.current_player_index].is_ai:
-			await get_tree().create_timer(0.75).timeout
-			_do_ai_pick_piece()
+	status_label.text = "Barrera rota! Ahora mueve " + str(turn_manager.current_roll.get("dice2", 0)) + " pasos con otra ficha"
+	
+	if players[turn_manager.current_player_index].is_ai:
+		await get_tree().create_timer(0.75).timeout
+		_do_ai_pick_piece()
 
 func _execute_move(piece: GamePiece, steps: int):
 	var is_pair = turn_manager.current_roll.get("pair", false)
@@ -588,7 +466,7 @@ func _execute_move(piece: GamePiece, steps: int):
 	
 	if is_own_barrier:
 		if is_pair:
-			turn_manager.pending_move_piece = Piece
+			turn_manager.pending_move_piece = GamePiece
 			turn_manager.pending_move_steps = steps
 			turn_manager.break_barrier_requested.emit()
 			return
@@ -604,11 +482,6 @@ func _execute_move(piece: GamePiece, steps: int):
 	
 	var captured = movement_manager.captured_this_turn 
 	movement_manager.reset_capture_flag()
-	
-	# Check mine and wormhole after move
-	movement_manager.check_mine(piece)
-	await event_manager.check_wormhole(piece)
-	
 	movement_manager.check_victory(piece.player)
 	
 	turn_manager.on_piece_moved(true, captured)
@@ -703,8 +576,7 @@ func _select_card(card_index: int):
 			hand_display.hide_hand() 
 		"enemy_any":
 			turn_manager.current_state = TurnManager.State.CARD_TARGET
-			var card_icon = CardManager.CARD_INFO[pending_card_type]["icon"]
-			status_label.text = card_icon + " Selecciona una ficha enemiga"
+			status_label.text = "[L] Selecciona una ficha enemiga"
 			hand_display.hide_hand()
 
 func _apply_no_target_card():
@@ -787,8 +659,6 @@ func _handle_card_target(piece: GamePiece):
 				status_label.text = "TURBO: +5 pasos!"
 				await movement_manager.move_piece(piece, 5, false)
 				movement_manager._check_stacking(piece.current_position)
-				movement_manager.check_mine(piece)
-				await event_manager.check_wormhole(piece)
 				if movement_manager.captured_this_turn:
 					movement_manager.reset_capture_flag()
 					turn_manager.current_roll["bonus"] = 10
@@ -816,8 +686,6 @@ func _handle_card_target(piece: GamePiece):
 			status_label.text = "SABOTAJE: Retrocede 4 pasos"
 			await piece._move_backward(4)
 			movement_manager._check_stacking(piece.current_position)
-			movement_manager.check_mine(piece)
-			await event_manager.check_wormhole(piece)
 		CardManager.CardType.FREEZE:
 			piece.apply_freeze(1)
 			status_label.text = "HIELO: Ficha congelada por 1 turno!"
@@ -827,26 +695,6 @@ func _handle_card_target(piece: GamePiece):
 				status_label.text = "LADRON: Robaste " + card_manager.get_card_name(stolen) + " a " + piece.player.display_name + "!"
 			else:
 				status_label.text = "LADRON: Ese jugador no tiene cartas..."
-		CardManager.CardType.MINE:
-			movement_manager.place_mine(piece.current_position, player.player_id)
-			status_label.text = "MINA: ¡Mina colocada en casilla " + str(piece.current_position) + "!"
-		CardManager.CardType.GHOST:
-			piece.apply_ghost(1)
-			status_label.text = "FANTASMA: ¡Ficha intangible por 1 turno!"
-		CardManager.CardType.ALLIANCE:
-			pending_alliance_target_player = piece.player.player_id
-			if piece.player.is_ai:
-				var accepted = _ai_decide_alliance(piece.player.player_id, turn_manager.current_player_index)
-				if accepted:
-					movement_manager.add_alliance(turn_manager.current_player_index, piece.player.player_id, 5)
-					status_label.text = "ALIANZA: ¡" + piece.player.display_name.to_upper() + " aceptó! Sin capturas mutuas por 5 turnos"
-				else:
-					status_label.text = "ALIANZA: " + piece.player.display_name.to_upper() + " rechazó la alianza"
-				pending_alliance_target_player = -1
-			else:
-				# Human player — show UI popup
-				_show_alliance_popup(turn_manager.current_player_index, piece.player.player_id)
-				return  # Don't continue — popup handles state
 	
 	turn_manager.current_state = TurnManager.State.IDLE
 	turn_manager.card_used_this_turn = true 
@@ -877,8 +725,6 @@ func _execute_penalty(piece: GamePiece):
 	turn_manager.end_turn()
 
 func _on_capture_happened(_enemy: GamePiece, bonus: int):
-	if event_manager.is_tregua_active():
-		return
 	turn_manager.current_roll["bonus"] = bonus
 
 func _on_piece_finished_signal(_piece_ref):
@@ -912,16 +758,9 @@ func _on_penalty():
 	status_label.text = "¡3 pares! Elige ficha para cárcel"
 
 func _on_turn_started(player_index: int):
-	is_processing = true
-	var cam_tween = camera_controller.move_to_player(player_index)
-	if cam_tween:
-		await cam_tween.finished
-	is_processing = false
-	
+	camera_controller.move_to_player(player_index, false)
 	jail_roll_attempts = 0
 	roll_cooldown = false
-	await event_manager.on_turn_started(player_index)
-	turn_manager.order_reversed = event_manager.is_reversa_active()
 	if game_over:
 		return
 	
@@ -935,26 +774,9 @@ func _on_turn_started(player_index: int):
 	_update_card_display()
 
 func _on_turn_ended(_player_index: int):
-	event_manager.on_turn_ended(_player_index)
-	movement_manager.tick_alliances()
 	if game_over:
 		return
 	dice_manager.clear_for_turn_end()
-
-func _on_turn_ready_for_next(next_index: int):
-	if game_over:
-		return
-	if event_manager.processing_extra_turn:
-		return
-	turn_manager.order_reversed = event_manager.is_reversa_active()
-	var correct_next = event_manager.get_next_player_index(turn_manager.current_player_index)
-	turn_manager.start_turn(correct_next)
-
-func _on_extra_turn_requested(player_index: int):
-	if game_over:
-		return
-	dice_manager.clear_for_turn_end()
-	turn_manager.start_turn(player_index)
 
 func _on_victory_achieved(player: Player):
 	game_over = true
@@ -1090,198 +912,4 @@ func _ai_pick_card_target(player_index: int, card_type: int) -> GamePiece:
 							best = enemy
 							break
 			return best
-		CardManager.CardType.MINE:
-			# Place mine on own piece that enemies are approaching
-			for piece in player.pieces:
-				if piece.in_jail or piece.is_finished or piece.in_home_path:
-					continue
-				return piece
-		CardManager.CardType.GHOST:
-			# Ghost the most threatened piece
-			for piece in player.pieces:
-				if piece.in_jail or piece.is_finished or piece.is_ghost:
-					continue
-				for enemy_player in players:
-					if enemy_player == player:
-						continue
-					for enemy in enemy_player.pieces:
-						if enemy.in_jail or enemy.is_finished:
-							continue
-						var dist = (piece.current_position - enemy.current_position + main_path_size) % main_path_size
-						if dist <= 6:
-							return piece
-			return null
-		CardManager.CardType.ALLIANCE:
-			# Propose alliance with the strongest enemy
-			var best: GamePiece = null
-			var best_route = -1
-			for enemy_player in players:
-				if enemy_player == player:
-					continue
-				var total_route = 0
-				for ep in enemy_player.pieces:
-					if not ep.is_finished:
-						total_route += ep.route
-				if total_route > best_route:
-					best_route = total_route
-					for ep in enemy_player.pieces:
-						if not ep.in_jail and not ep.is_finished:
-							best = ep
-							break
-			return best
 	return null
-
-# ── Alliance UI System ──────────────────────────────────────
-
-func _show_alliance_popup(proposer_id: int, target_id: int):
-	if alliance_popup:
-		alliance_popup.queue_free()
-	
-	alliance_popup = PanelContainer.new()
-	alliance_popup.name = "AlliancePopup"
-	
-	# Style the panel
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.12, 0.12, 0.18, 0.95)
-	style.border_color = Color(0.9, 0.7, 0.2, 1.0)
-	style.set_border_width_all(3)
-	style.set_corner_radius_all(12)
-	style.set_content_margin_all(20)
-	alliance_popup.add_theme_stylebox_override("panel", style)
-	
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 12)
-	alliance_popup.add_child(vbox)
-	
-	var title = Label.new()
-	title.text = "⚔ PROPUESTA DE ALIANZA ⚔"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 22)
-	title.add_theme_color_override("font_color", Color(0.9, 0.7, 0.2))
-	vbox.add_child(title)
-	
-	var desc = Label.new()
-	desc.text = players[proposer_id].display_name.to_upper() + " propone alianza a " + players[target_id].display_name.to_upper() + "\nSin capturas mutuas por 5 turnos"
-	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	desc.add_theme_font_size_override("font_size", 16)
-	desc.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
-	vbox.add_child(desc)
-	
-	var hbox = HBoxContainer.new()
-	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	hbox.add_theme_constant_override("separation", 20)
-	vbox.add_child(hbox)
-	
-	var accept_btn = Button.new()
-	accept_btn.text = "✓ Aceptar"
-	accept_btn.custom_minimum_size = Vector2(120, 40)
-	var accept_style = StyleBoxFlat.new()
-	accept_style.bg_color = Color(0.1, 0.5, 0.2, 0.9)
-	accept_style.set_corner_radius_all(8)
-	accept_btn.add_theme_stylebox_override("normal", accept_style)
-	accept_btn.add_theme_font_size_override("font_size", 16)
-	hbox.add_child(accept_btn)
-	
-	var reject_btn = Button.new()
-	reject_btn.text = "✗ Rechazar"
-	reject_btn.custom_minimum_size = Vector2(120, 40)
-	var reject_style = StyleBoxFlat.new()
-	reject_style.bg_color = Color(0.5, 0.1, 0.1, 0.9)
-	reject_style.set_corner_radius_all(8)
-	reject_btn.add_theme_stylebox_override("normal", reject_style)
-	reject_btn.add_theme_font_size_override("font_size", 16)
-	hbox.add_child(reject_btn)
-	
-	accept_btn.pressed.connect(_on_alliance_accepted.bind(proposer_id, target_id))
-	reject_btn.pressed.connect(_on_alliance_rejected.bind(target_id))
-	
-	$"../UI/GameUI".add_child(alliance_popup)
-	
-	# Center the popup
-	alliance_popup.anchor_left = 0.5
-	alliance_popup.anchor_right = 0.5
-	alliance_popup.anchor_top = 0.4
-	alliance_popup.anchor_bottom = 0.4
-	alliance_popup.offset_left = -180
-	alliance_popup.offset_right = 180
-	alliance_popup.offset_top = -80
-	alliance_popup.offset_bottom = 80
-
-func _on_alliance_accepted(proposer_id: int, target_id: int):
-	movement_manager.add_alliance(proposer_id, target_id, 5)
-	status_label.text = "ALIANZA: ¡" + players[target_id].display_name.to_upper() + " aceptó! Sin capturas mutuas por 5 turnos"
-	_cleanup_alliance_popup()
-
-func _on_alliance_rejected(target_id: int):
-	status_label.text = "ALIANZA: " + players[target_id].display_name.to_upper() + " rechazó la alianza"
-	_cleanup_alliance_popup()
-
-func _cleanup_alliance_popup():
-	pending_alliance_target_player = -1
-	if alliance_popup:
-		alliance_popup.queue_free()
-		alliance_popup = null
-	turn_manager.current_state = TurnManager.State.IDLE
-	turn_manager.card_used_this_turn = true
-	await get_tree().create_timer(1.5).timeout
-	var player = players[turn_manager.current_player_index]
-	status_label.text = "Turno de " + player.display_name.to_upper() + " — [Espacio] lanzar"
-
-func _ai_decide_alliance(target_id: int, proposer_id: int) -> bool:
-	var ai = ai_controllers[target_id]
-	match ai.difficulty:
-		AIController.Difficulty.EASY:
-			return true  # Always accept
-		AIController.Difficulty.NORMAL:
-			# Accept if they have >= 2 pieces in jail
-			var jailed = 0
-			for piece in players[target_id].pieces:
-				if piece.in_jail:
-					jailed += 1
-			return jailed >= 2
-		AIController.Difficulty.HARD:
-			# Accept only if losing (lower total route than proposer)
-			var target_route = 0
-			for piece in players[target_id].pieces:
-				if not piece.is_finished:
-					target_route += piece.route
-			var proposer_route = 0
-			for piece in players[proposer_id].pieces:
-				if not piece.is_finished:
-					proposer_route += piece.route
-			return target_route < proposer_route
-	return false
-
-# ── Mine / Wormhole Signal Handlers ─────────────────────────
-
-func _on_mine_triggered(piece: GamePiece, _mine_owner_id: int):
-	status_label.text = "¡BOOM! " + piece.player.display_name.to_upper() + " pisó una MINA!"
-
-func _on_alliance_expired(player_a: int, player_b: int):
-	status_label.text = "Alianza entre " + players[player_a].display_name.to_upper() + " y " + players[player_b].display_name.to_upper() + " ha expirado"
-
-func _on_wormhole_activated(pos_a: int, pos_b: int):
-	# Place glowing torus markers at portal positions
-	for pos in [pos_a, pos_b]:
-		var cell_node = board.main_path[pos]
-		var marker = MeshInstance3D.new()
-		var mesh = TorusMesh.new()
-		mesh.inner_radius = 0.002
-		mesh.outer_radius = 0.004
-		marker.mesh = mesh
-		var mat = StandardMaterial3D.new()
-		mat.albedo_color = Color(0.2, 0.8, 1.0, 0.7)
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		mat.emission_enabled = true
-		mat.emission = Color(0.1, 0.6, 1.0)
-		mat.emission_energy_multiplier = 1.0
-		marker.material_override = mat
-		cell_node.add_child(marker)
-		marker.position = Vector3(0, 0.005, 0)
-		wormhole_markers.append(marker)
-
-func _on_wormhole_deactivated():
-	for marker in wormhole_markers:
-		if is_instance_valid(marker):
-			marker.queue_free()
-	wormhole_markers.clear()

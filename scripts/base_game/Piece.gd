@@ -28,8 +28,6 @@ var is_shielded: bool = false
 var shield_turns: int = 0
 var is_frozen: bool = false
 var frozen_turns: int = 0
-var is_ghost: bool = false
-var ghost_turns: int = 0
 
 func _ready():
 	$Visual/yellow.visible = false
@@ -208,11 +206,6 @@ func tick_status_effects() -> void:
 		if frozen_turns <= 0: 
 			is_frozen = false
 	
-	if is_ghost:
-		ghost_turns -= 1
-		if ghost_turns <= 0:
-			is_ghost = false
-	
 	update_visual_effect()
 
 func apply_shield(turns: int) -> void:
@@ -225,17 +218,12 @@ func apply_freeze(turns: int) -> void:
 	frozen_turns = turns
 	update_visual_effect()
 
-func apply_ghost(turns: int) -> void:
-	is_ghost = true
-	ghost_turns = turns
-	update_visual_effect()
-
 func update_visual_effect() -> void:
 	for child in get_children():
 		if child.name == "StatusEffect":
 			child.free()
 	
-	if not is_frozen and not is_shielded and not is_ghost:
+	if not is_frozen and not is_shielded:
 		return
 	
 	var effect = MeshInstance3D.new()
@@ -245,14 +233,12 @@ func update_visual_effect() -> void:
 	if is_frozen:
 		mesh = BoxMesh.new()
 		mesh.size = Vector3(0.10, 0.18, 0.10)
-	elif is_ghost:
-		mesh = CapsuleMesh.new()
-		mesh.radius = 0.20
-		mesh.height = 0.18
+
 	else:
 		mesh = CapsuleMesh.new()
 		mesh.radius = 0.25
 		mesh.height = 0.15
+	
 	
 	effect.mesh = mesh
 	
@@ -264,9 +250,6 @@ func update_visual_effect() -> void:
 	if is_frozen:
 		mat.albedo_color = Color(0.4, 0.7, 1.0, 0.6)
 		mat.emission = Color(0.2, 0.5, 1.0)
-	elif is_ghost:
-		mat.albedo_color = Color(0.6, 0.3, 0.9, 0.4)
-		mat.emission = Color(0.5, 0.2, 0.8)
 	else:
 		mat.albedo_color = Color(1.0, 0.902, 0.302, 0.451)
 		mat.emission = Color(1.0, 0.8, 0.2)
@@ -281,10 +264,8 @@ func _go_to_jail():
 	in_jail = true
 	is_shielded = false
 	is_frozen = false
-	is_ghost = false
 	shield_turns = 0
 	frozen_turns = 0
-	ghost_turns = 0
 	has_completed_lap = false
 	update_visual_effect()
 	var spot = board.jail[color][piece_id]
@@ -308,22 +289,24 @@ func _move_backward(steps: int):
 				in_home_path = false
 				route = (player.home_entry - start_index - 1 + board.main_path.size()) % board.main_path.size()
 				current_position = (route + start_index) % board.main_path.size()
-				has_completed_lap = false
 				
-				# Animar a la casilla de entrada antes de seguir
-				var entry_square = board.main_path[current_position]
-				await _animate_hop_to(entry_square.global_position)
+				if has_completed_lap:
+					has_completed_lap = false
 				
 				var remaining = steps - i - 1
+				
 				for j in range(remaining):
 					route -= 1
 					if route < 0:
 						route += board.main_path.size()
+						if has_completed_lap:
+							has_completed_lap = false
+					
 					current_position = (route + start_index) % board.main_path.size()
 					var square = board.main_path[current_position]
 					await _animate_hop_to(square.global_position)
 				
-				return
+				return 
 			
 			var square = board.home_paths[color][home_route]
 			await _animate_hop_to(square.global_position)

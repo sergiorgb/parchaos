@@ -8,7 +8,7 @@ func setup(cam: Camera3D, markers: Array):
 	camera = cam
 	camera_markers = markers
 
-func move_to_player(player_index: int, instant: bool = false)-> Tween:
+func move_to_player(player_index: int, instant: bool = false):
 	var target = camera_markers[player_index]
 	var center = Vector3.ZERO
 	
@@ -25,4 +25,3 @@ func move_to_player(player_index: int, instant: bool = false)-> Tween:
 		func(_v): camera.look_at(center, Vector3.UP),
 		0.0, 1.0, 1.5
 	)
-	return tween
