@@ -116,8 +116,7 @@ func _on_play_button_pressed() -> void:
 
 	print("counter_human: ", counter_human, " human_colors: ", human_colors)
 
-	# Solo IA: arrancar tablero local directamente
-	if counter_human == 0:
+	if counter_human <= 1:
 		get_tree().change_scene_to_file("res://scenes/main.tscn")
 		return
 
