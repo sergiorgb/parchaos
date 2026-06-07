@@ -32,6 +32,7 @@ var is_ready: bool = false
 const MAX_JAIL_ROLLS = 3
 const ROLL_COOLDOWN_TIME = 1.5
 
+
 const PLAYER_DATA = [
 	{"id": 0, "color": "yellow", "name": "amarillo", "start_index": 0, "home_entry": 63},
 	{"id": 1, "color": "blue", "name": "azul", "start_index": 17, "home_entry": 12},
@@ -42,13 +43,14 @@ const PLAYER_DATA = [
 const IS_AI = [true, true, true, true]
 
 func _ready():
+	print("GameManager NodePath:", get_path())
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	await get_tree().process_frame
 	board = $"../Board"
 	board._fill_jail()
 	board._fill_home_paths()
 	
-	camera = get_viewport().get_camera_3d() 
+	camera = get_viewport().get_camera_3d()
 	if not camera:
 		camera = Camera3D.new()
 		add_child(camera)
@@ -64,10 +66,26 @@ func _ready():
 	for i in range(players.size()):
 		card_manager.draw_card(i)
 		card_manager.draw_card(i)
+	is_ready = true
+	CaptureManager.game_manager = self
 	
+	var is_online = multiplayer.multiplayer_peer != null
+	var is_client = is_online and not multiplayer.is_server()
+	
+	if is_client:
+		# Cliente: desactivar toda la lógica, solo renderizar
+		set_process(false)
+		set_physics_process(false)
+		turn_manager.set_process(false)
+		movement_manager.set_process(false)
+		camera_controller.set_process(true)
+		camera_controller.set_physics_process(true)
+		camera_controller.move_to_player(GameConfig.my_color if GameConfig.my_color != -1 else 0, true)
+		return
+	
+	# Servidor o local: arrancar normal
 	turn_manager.start_turn(0)
 	camera_controller.move_to_player(0, true)
-	is_ready = true
 
 func _setup_managers():
 	camera_controller = CameraController.new()
@@ -117,14 +135,28 @@ func _setup_card_ui():
 	hand_display.hide_hand()
 
 func _on_hand_card_clicked(card_index: int, screen_position: Vector2):
+	print("click carta - state:", turn_manager.current_state, " card_used:", turn_manager.card_used_this_turn)
 	if turn_manager.current_state not in [TurnManager.State.IDLE, TurnManager.State.DRAW_PHASE]:
+		print("bloqueado por state")
 		return
 	if turn_manager.card_used_this_turn:
+		print("bloqueado por card_used")
 		return
-	
+	print("enviando request_use_card")
 	pending_card_screen_pos = screen_position
-	_select_card(card_index)
+	print("_on_hand_card_clicked llamado, peer:", multiplayer.get_unique_id())
+	if multiplayer.multiplayer_peer != null and not multiplayer.is_server():
+		request_use_card.rpc_id(1, card_index)
+	else:
+		_select_card(card_index)
 
+@rpc("any_peer", "reliable")
+func request_use_card(card_index: int) -> void:
+	print("request_use_card recibido en peer:", multiplayer.get_unique_id(), " index:", card_index)
+	if not multiplayer.is_server():
+		return
+	print("ejecutando _select_card")
+	_select_card(card_index)
 func _setup_players():
 	for data in PLAYER_DATA:
 		var player = Player.new()
@@ -170,40 +202,46 @@ func _setup_deck_display():
 func _input(event):
 	if game_over or not is_ready:
 		return
-	
+	if turn_manager == null:
+		return
 	if event is InputEventKey and (not event.pressed or event.echo):
 		return
-	
+
+	# Solo el jugador del turno actual puede interactuar
+	var my_player_id = _get_my_player_id()
+	if my_player_id != turn_manager.current_player_index:
+		return
+
 	var key = event.keycode if event is InputEventKey else -1
-	
+
 	if turn_manager.current_state == TurnManager.State.DRAW_PHASE:
 		if event.is_action_pressed("ui_accept") and not is_processing:
 			turn_manager.current_state = TurnManager.State.IDLE
-			_roll_dice()
+			_request_roll()
 			return
 		elif key == KEY_R and not is_processing:
-			_draw_card_phase()
+			if multiplayer.multiplayer_peer != null and not multiplayer.is_server():
+				request_draw_card.rpc_id(1)
+			else:
+				_draw_card_phase()
 			return
 
 	if turn_manager.current_state == TurnManager.State.IDLE:
 		if event.is_action_pressed("ui_accept") and not roll_cooldown and not is_processing:
-			_roll_dice()
+			_request_roll()
 			return
-	
+
 	if turn_manager.current_state == TurnManager.State.CARD_TARGET:
 		if key == KEY_ESCAPE:
 			_cancel_card()
 			return
-			
-	# DEBUG BARRERAS
-	if event is InputEventKey and event.pressed:
-		# Flecha arriba → forzar dados 3-3 para el turno actual
-		if event.keycode == KEY_UP:
-			turn_manager.current_state = TurnManager.State.IDLE
-			_on_dice_stopped([34, 34])
-			status_label.text = "DEBUG: dados forzados 3-3"
-			return
-	
+
+@rpc("any_peer", "reliable")
+func request_draw_card() -> void:
+	if not multiplayer.is_server():
+		return
+	_draw_card_phase()
+
 func _draw_card_phase():
 	if is_processing:
 		return
@@ -211,21 +249,27 @@ func _draw_card_phase():
 	var player_idx = turn_manager.current_player_index
 	
 	if card_manager.get_hand(player_idx).size() >= CardManager.MAX_HAND_SIZE:
-		status_label.text = "Mano llena (máx 5 cartas)"
-		await get_tree().create_timer(1.0).timeout
-		turn_manager.current_state = TurnManager.State.IDLE
-		status_label.text = "Mano llena — [Espacio] para lanzar dados"
 		is_processing = false
+		_broadcast_state("Mano llena — [Espacio] para lanzar dados")
 		return
 	
-	if card_manager.deck.is_empty():
-		discard_pile_top.visible = false
-		await _animate_deck_refill()
-		# re-mostrar tope del mazo
-		if deck_pile_cards.size() > 0:
-			deck_pile_cards[0].visible = true
-
 	var card_type = card_manager.draw_card(player_idx)
+	sync_card_drawn.rpc(player_idx, card_type)
+	
+	await get_tree().create_timer(2.5).timeout
+	turn_manager.end_turn()
+	is_processing = false
+	_broadcast_state()
+
+@rpc("authority", "call_local", "reliable")
+func sync_card_drawn(player_idx: int, card_type: int) -> void:
+	# Actualizar lógica local del cliente
+	if not multiplayer.is_server():
+		card_manager.get_hand(player_idx).append(card_type)
+	
+	# Animación
+	if card_manager.get_deck_size() < deck_pile_cards.size():
+		deck_pile_cards[card_manager.get_deck_size()].visible = false
 	
 	var animated_card = card_scene.instantiate()
 	animated_card.card_type = -1
@@ -236,28 +280,21 @@ func _draw_card_phase():
 		else Vector3(0.95, 0.03, -0.1)
 	animated_card.global_position = deck_world_pos
 	
-	var hand_index = card_manager.get_hand(player_idx).size() - 1  # Última carta añadida
+	var hand_index = card_manager.get_hand(player_idx).size() - 1
 	var screen_pos = _get_hand_card_screen_position(hand_index)
 	var target_world_pos = _screen_to_world_position(screen_pos)
 	
 	var tween = create_tween()
 	tween.tween_property(animated_card, "global_position", target_world_pos, 0.4) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(animated_card, "rotation:y", PI, 0.4)  # Gira mientras vuela
-	
+	tween.parallel().tween_property(animated_card, "rotation:y", PI, 0.4)
 	await tween.finished
-	
 	animated_card.queue_free()
-	_update_card_display()
 	
+	_update_card_display()
 	var card_name = card_manager.get_card_name(card_type)
 	var card_icon = card_manager.get_card_icon(card_type)
 	status_label.text = "Robaste: " + card_icon + " " + card_name
-	await get_tree().create_timer(1.0).timeout
-	status_label.text = "Carta robada — Turno terminado"
-	await get_tree().create_timer(0.5).timeout
-	turn_manager.end_turn()
-	is_processing = false
 
 func _get_hand_card_screen_position(card_index: int) -> Vector2:
 	var vp = get_tree().root.get_viewport().get_visible_rect().size
@@ -289,12 +326,15 @@ func _roll_dice():
 	dice_manager.roll_for_player(turn_manager.current_player_index)
 
 func _on_dice_stopped(results: Array):
-	movement_manager.reset_capture_flag()
-	turn_manager.process_roll(results)
+	if multiplayer.multiplayer_peer == null or multiplayer.is_server():
+		sync_dice_display.rpc(results)  # ← mostrar dados en cliente
+		sync_dice_result.rpc(results)   # ← procesar lógica
+
+func _process_dice_results():
 	var player = players[turn_manager.current_player_index]
 	var all_in_jail = not player.pieces.any(func(p): return not p.in_jail and not p.is_finished)
 	var is_pair = turn_manager.current_roll.get("pair", false)
-	
+
 	if all_in_jail and not is_pair:
 		jail_roll_attempts += 1
 		if jail_roll_attempts < MAX_JAIL_ROLLS:
@@ -310,18 +350,18 @@ func _on_dice_stopped(results: Array):
 			await get_tree().create_timer(1.5).timeout
 			turn_manager.end_turn()
 			return
-		
-	
-	
+
 	if not _has_any_valid_move() and turn_manager.current_state != TurnManager.State.PENALTY_JAIL and turn_manager.current_state != TurnManager.State.BREAK_BARRIER_FIRST:
 		status_label.text = "Sin movimientos posibles. Pasando turno..."
 		await get_tree().create_timer(1.5).timeout
 		turn_manager.end_turn()
 		return
-	
+
 	if dice_manager.dice_nodes.size() > 0:
 		dice_manager.highlight_active_dice(0)
-	
+		if multiplayer.is_server():
+			sync_highlight_die.rpc(0)
+
 	match turn_manager.current_state:
 		TurnManager.State.PENALTY_JAIL:
 			status_label.text = "¡3 pares! Elige una ficha tuya para la cárcel"
@@ -329,11 +369,11 @@ func _on_dice_stopped(results: Array):
 			status_label.text = "Dado 1: " + str(turn_manager.current_roll.dice1) + " | Dado 2: " + str(turn_manager.current_roll.dice2) + " | Mueve con dado 1"
 		_:
 			status_label.text = "Dados listos!"
-		
+
 	if players[turn_manager.current_player_index].is_ai:
 		await get_tree().create_timer(1.0).timeout
 		_do_ai_pick_piece()
-	
+	_broadcast_state()
 	_start_roll_cooldown()
 
 func _do_ai_pick_piece():
@@ -354,6 +394,10 @@ func _do_ai_pick_piece():
 		_on_piece_clicked(piece)
 
 func _on_piece_clicked(piece_ref: GamePiece):
+	if not multiplayer.is_server():
+		request_move.rpc_id(1, piece_ref.player.player_id, piece_ref.piece_id)
+		return
+	
 	if turn_manager.current_state == TurnManager.State.CARD_TARGET:
 		_handle_card_target(piece_ref)
 		return
@@ -414,6 +458,7 @@ func _handle_jail_exit(piece: GamePiece):
 	
 	piece.jail_exited.connect(_on_jail_exited, CONNECT_ONE_SHOT)
 	piece._leave_jail()
+	_broadcast_state()
 
 func _on_jail_exited(_piece: GamePiece):
 	movement_manager._check_capture(_piece)
@@ -426,18 +471,14 @@ func _on_jail_exited(_piece: GamePiece):
 		turn_manager.current_state = TurnManager.State.BONUS_MOVE
 		turn_manager.bonus_came_from_dice = 2
 		turn_manager.bonus_move_available.emit(10)
-		status_label.text = "¡Captura! Bonus de 10 pasos"
-		if players[turn_manager.current_player_index].is_ai:
-			await get_tree().create_timer(0.75).timeout
-			_do_ai_pick_piece()
 	else:
 		status_label.text = "Ficha liberada! Turno terminado."
 		await get_tree().create_timer(0.8).timeout
 		turn_manager.end_turn()
+	_broadcast_state()  # ← agregar al final de ambas ramas
 
 func _handle_break_barrier_first(piece: GamePiece):
 	var barrier_pieces = movement_manager.get_barrier_pieces_at(piece.current_position, piece.player)
-	
 	if barrier_pieces.size() < 2:
 		status_label.text = "Selecciona una ficha que forme parte de una barrera"
 		return
@@ -447,8 +488,8 @@ func _handle_break_barrier_first(piece: GamePiece):
 	
 	turn_manager.has_broken_barrier_this_turn = true
 	turn_manager.current_state = TurnManager.State.MOVE_DICE_2
-	
 	status_label.text = "Barrera rota! Ahora mueve " + str(turn_manager.current_roll.get("dice2", 0)) + " pasos con otra ficha"
+	_broadcast_state()  # ← agregar
 	
 	if players[turn_manager.current_player_index].is_ai:
 		await get_tree().create_timer(0.75).timeout
@@ -483,7 +524,7 @@ func _execute_move(piece: GamePiece, steps: int):
 	var captured = movement_manager.captured_this_turn 
 	movement_manager.reset_capture_flag()
 	movement_manager.check_victory(piece.player)
-	
+	_broadcast_state()
 	turn_manager.on_piece_moved(true, captured)
 	
 	if turn_manager.current_state == TurnManager.State.MOVE_DICE_2:
@@ -496,7 +537,11 @@ func _execute_move(piece: GamePiece, steps: int):
 	match turn_manager.current_state:
 		TurnManager.State.MOVE_DICE_2:
 			dice_manager.reset_dice_highlight(0)
+			if multiplayer.is_server():
+				sync_reset_highlight_die.rpc(0)
 			dice_manager.highlight_active_dice(1)
+			if multiplayer.is_server():
+				sync_highlight_die.rpc(1)
 			status_label.text = "Mueve con dado 2: " + str(turn_manager.current_roll.get("dice2", 0))
 			status_label.visible = true
 			if players[turn_manager.current_player_index].is_ai:
@@ -509,8 +554,9 @@ func _execute_move(piece: GamePiece, steps: int):
 			if players[turn_manager.current_player_index].is_ai:
 				await get_tree().create_timer(1.0).timeout
 				_do_ai_pick_piece()
-		TurnManager.State.IDLE:
 			dice_manager.reset_dice_highlight(1)
+			if multiplayer.is_server():
+				sync_reset_highlight_die.rpc(1)
 			
 	if turn_manager.current_state == TurnManager.State.BONUS_MOVE:
 		if not _has_any_valid_move():
@@ -578,11 +624,12 @@ func _select_card(card_index: int):
 			turn_manager.current_state = TurnManager.State.CARD_TARGET
 			status_label.text = "[L] Selecciona una ficha enemiga"
 			hand_display.hide_hand()
+	if target != "none": 
+		_broadcast_state()
 
 func _apply_no_target_card():
 	var player_idx = turn_manager.current_player_index
 	var card_type = card_manager.use_card(player_idx, pending_card_index)
-	
 	_update_discard_display(card_type)
 	
 	if pending_card_type == CardManager.CardType.DOUBLE:
@@ -593,6 +640,7 @@ func _apply_no_target_card():
 	pending_card_type = -1
 	turn_manager.current_state = TurnManager.State.IDLE
 	turn_manager.card_used_this_turn = true
+	_broadcast_state()  # ← agregar
 	await _animate_card_to_discard(card_type, pending_card_screen_pos)
 
 func _update_discard_display(_card_type: int):
@@ -622,6 +670,8 @@ func _animate_card_to_discard(card_type: int, from_screen_pos: Vector2):
 func _cancel_card():
 	turn_manager.current_state = TurnManager.State.IDLE
 	status_label.text = "Turno de " + players[turn_manager.current_player_index].display_name.to_upper() + " — [Espacio] lanzar"
+	_broadcast_state()
+
 
 func _handle_card_target(piece: GamePiece):
 	var player = players[turn_manager.current_player_index]
@@ -697,7 +747,8 @@ func _handle_card_target(piece: GamePiece):
 				status_label.text = "LADRON: Ese jugador no tiene cartas..."
 	
 	turn_manager.current_state = TurnManager.State.IDLE
-	turn_manager.card_used_this_turn = true 
+	turn_manager.card_used_this_turn = true
+	_broadcast_state()  # ← agregar aquí
 	await _animate_card_to_discard(card_type, pending_card_screen_pos)
 	
 	await get_tree().create_timer(1.2).timeout
@@ -708,11 +759,16 @@ func _on_jailbreak_card_exited(piece: GamePiece):
 	movement_manager._check_capture(piece)
 	movement_manager._check_stacking(piece.current_position)
 	movement_manager.reset_capture_flag()
+	_broadcast_state()  # ← agregar
 
 func _update_card_display():
 	if discard_pile_top:
 		discard_pile_top.visible = true
-	var hand = card_manager.get_hand(turn_manager.current_player_index)
+	var my_id = _get_my_player_id()
+	if turn_manager.current_player_index != my_id:
+		hand_display.hide_hand()
+		return
+	var hand = card_manager.get_hand(my_id)  # ← my_id, no current_player_index
 	hand_display.show_hand(hand)
 	if turn_manager.current_state in [TurnManager.State.IDLE, TurnManager.State.DRAW_PHASE] \
 	   and not turn_manager.card_used_this_turn:
@@ -720,9 +776,11 @@ func _update_card_display():
 	else:
 		hand_display.hide_hand()
 
+
 func _execute_penalty(piece: GamePiece):
 	piece._go_to_jail()
 	turn_manager.end_turn()
+	_broadcast_state()
 
 func _on_capture_happened(_enemy: GamePiece, bonus: int):
 	turn_manager.current_roll["bonus"] = bonus
@@ -758,6 +816,8 @@ func _on_penalty():
 	status_label.text = "¡3 pares! Elige ficha para cárcel"
 
 func _on_turn_started(player_index: int):
+	if multiplayer.is_server():
+		sync_turn_state.rpc(player_index, turn_manager.current_state)
 	camera_controller.move_to_player(player_index, false)
 	jail_roll_attempts = 0
 	roll_cooldown = false
@@ -772,9 +832,19 @@ func _on_turn_started(player_index: int):
 	if players[player_index].is_ai:
 		_do_ai_turn(player_index)
 	_update_card_display()
+	_broadcast_state()
 
 func _on_turn_ended(_player_index: int):
 	if game_over:
+		return
+	dice_manager.clear_for_turn_end()
+	if not multiplayer.is_server():
+		return
+	sync_clear_dice.rpc()  # ← avisar al cliente
+
+@rpc("authority", "reliable")
+func sync_clear_dice() -> void:
+	if multiplayer.is_server():
 		return
 	dice_manager.clear_for_turn_end()
 
@@ -913,3 +983,122 @@ func _ai_pick_card_target(player_index: int, card_type: int) -> GamePiece:
 							break
 			return best
 	return null
+
+func _get_my_player_id() -> int:
+	print("peer:", multiplayer.get_unique_id(), " my_color:", GameConfig.my_color, " is_server:", multiplayer.is_server())
+	if not multiplayer.is_server():
+		return GameConfig.my_color if GameConfig.my_color != -1 else 1
+	for i in range(GameConfig.player_config.size()):
+		if not GameConfig.player_config[i]["is_ai"]:
+			return i
+	return 0
+
+func _request_roll() -> void:
+	if multiplayer.is_server():
+		_roll_dice()
+	else:
+		request_roll.rpc_id(1)
+
+@rpc("any_peer", "reliable")
+func request_roll() -> void:
+	if not multiplayer.is_server():
+		return
+	_roll_dice()
+
+@rpc("authority", "call_local", "reliable")
+func sync_dice_result(results: Array) -> void:
+	if not multiplayer.is_server():
+		status_label.text = "Dados: " + str(results[0]) + " - " + str(results[1])
+		return
+	movement_manager.reset_capture_flag()
+	turn_manager.process_roll(results)
+	_process_dice_results()
+
+@rpc("authority", "reliable")
+func sync_dice_display(results: Array) -> void:
+	if multiplayer.is_server():
+		return
+	hand_display.hide_hand()
+	dice_manager.clear_for_turn_end()
+	await get_tree().process_frame  # ← esperar que queue_free ejecute
+	dice_manager.force_result(results, turn_manager.current_player_index)
+	status_label.text = "Dados: " + str(results[0]) + " - " + str(results[1])
+
+@rpc("authority", "reliable")
+func sync_highlight_die(index: int) -> void:
+	if multiplayer.is_server():
+		return
+	dice_manager.highlight_active_dice(index)
+
+@rpc("authority", "reliable")
+func sync_reset_highlight_die(index: int) -> void:
+	if multiplayer.is_server():
+		return
+	dice_manager.reset_dice_highlight(index)
+
+@rpc("any_peer", "reliable")
+func request_move(piece_player_id: int, piece_id: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var piece = _find_piece_by_ids(piece_player_id, piece_id)
+	if piece:
+		_on_piece_clicked(piece)
+
+@rpc("authority", "call_local", "reliable")
+func sync_turn_state(player_index: int, state: int) -> void:
+	if turn_manager == null:
+		return
+	turn_manager.current_player_index = player_index
+	turn_manager.current_state = state
+	camera_controller.move_to_player(player_index, false)
+	_update_card_display()
+
+func _find_piece_by_ids(player_id: int, piece_id: int) -> GamePiece:
+	for player in players:
+		if player.player_id == player_id:
+			for piece in player.pieces:
+				if piece.piece_id == piece_id:
+					return piece
+	return null
+
+
+@rpc("authority", "call_local", "reliable")
+func sync_full_state(
+	player_index: int,
+	state: int, 
+	roll: Dictionary,
+	hands: Array,
+	status_text: String,
+	card_used: bool
+) -> void:
+	if multiplayer.is_server():
+		return
+	if turn_manager == null:
+		return
+	turn_manager.current_player_index = player_index
+	turn_manager.current_state = state
+	turn_manager.current_roll = roll
+	turn_manager.card_used_this_turn = card_used
+	# Restaurar manos
+	for i in range(hands.size()):
+		card_manager.get_hand(i).clear()
+		card_manager.get_hand(i).append_array(hands[i])
+	status_label.text = status_text
+	camera_controller.move_to_player(player_index, false)
+	_update_card_display()
+
+func _broadcast_state(status_text: String = "") -> void:
+	if not multiplayer.is_server():
+		return
+	var hands = []
+	for i in range(players.size()):
+		hands.append(card_manager.get_hand(i).duplicate())
+	var text = status_text if status_text != "" else status_label.text
+	sync_full_state.rpc(
+		turn_manager.current_player_index,
+		turn_manager.current_state,
+		turn_manager.current_roll,
+		hands,
+		text,
+		turn_manager.card_used_this_turn  # ← agregar
+	)

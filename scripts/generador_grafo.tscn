@@ -4,4 +4,3 @@
 
 [node name="GeneradorGrafo" type="Node" unique_id=347057201]
 script = ExtResource("1_l5gb3")
-generar_archivo_ahora = true

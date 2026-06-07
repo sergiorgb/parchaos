@@ -96,3 +96,30 @@ func _clear_dice():
 
 func clear_for_turn_end():
 	_clear_dice()
+
+func force_result(results: Array, player_index: int) -> void:
+	_clear_dice()
+	var marker = camera_markers[player_index]
+	var dir_to_center = (Vector3.ZERO - marker.global_position).normalized()
+	
+	for i in range(results.size()):
+		var die = DiceScene.instantiate()
+		die.add_to_group("dados")  # ← agregar
+		add_child(die)
+		var spawn_pos = marker.global_position + (dir_to_center * 0.6)
+		spawn_pos.y = 0.015
+		var lateral = marker.global_transform.basis.x * (0.15 if i == 0 else -0.15)
+		die.global_position = spawn_pos + lateral
+		die.freeze = true
+		die.force_value(results[i])
+		dice_nodes[i] = die
+
+func _get_rotation_for_value(value: int) -> Vector3:
+	match value:
+		1: return Vector3(PI/2, 0, 0)
+		2: return Vector3(0, 0, -PI/2)
+		3: return Vector3(PI, 0, 0)
+		4: return Vector3(0, 0, 0)
+		5: return Vector3(0, 0, PI/2)
+		6: return Vector3(-PI/2, 0, 0)
+	return Vector3.ZERO

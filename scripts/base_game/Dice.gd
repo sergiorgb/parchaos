@@ -34,3 +34,19 @@ func _get_upward_face() -> int:
 			best_face = int(face_value)
 	
 	return best_face
+
+
+func force_value(target: int) -> void:
+	var candidates = [
+		Vector3(PI/2, 0, 0),
+		Vector3(-PI/2, 0, 0),
+		Vector3(0, 0, PI/2),
+		Vector3(0, 0, -PI/2),
+		Vector3(0, 0, 0),
+		Vector3(PI, 0, 0)
+	]
+	for y in [0, PI/2, PI, -PI/2]:
+		for rot in candidates:
+			rotation = Vector3(rot.x, y, rot.z)
+			if _get_upward_face() == target:
+				return

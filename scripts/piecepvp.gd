@@ -11,25 +11,26 @@ extends CharacterBody3D
 @onready var ficha_verde = $visual/fichaverde
 @onready var ficha_amarilla = $visual/fichaamarilla
 @onready var ficha_azul = $visual/fichaazul
-@export var color_id : int = 0
+@export var color_id: int = 0
 
-## Number of shots before a player dies
-@export var health : int = 5
-## The xyz position of the random spawns, you can add as many as you want!
+@export var health: int = 5
 @export var spawns: PackedVector3Array = ([
 	Vector3(-18, 0.2, 0),
 	Vector3(18, 0.2, 0),
 	Vector3(-2.8, 0.2, -6),
-	Vector3(-17,0,17),
-	Vector3(17,0,17),
-	Vector3(17,0,-17),
-	Vector3(-17,0,-17)
+	Vector3(-17, 0, 17),
+	Vector3(17, 0, 17),
+	Vector3(17, 0, -17),
+	Vector3(-17, 0, -17)
 ])
-var sensitivity : float =  .005
-var controller_sensitivity : float =  .010
 
-var axis_vector : Vector2
-var	mouse_captured : bool = true
+var sensitivity: float = .005
+var controller_sensitivity: float = .010
+var axis_vector: Vector2
+var mouse_captured: bool = true
+
+# Modo duelo: si es true, la muerte termina el duelo en vez de respawnear
+var duel_mode: bool = false
 
 const SPEED = 5.5
 const JUMP_VELOCITY = 8
@@ -40,7 +41,6 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	add_to_group("Player")
 	actualizar_color(color_id)
-	print(name, " color:", color_id)
 	if not is_multiplayer_authority(): return
 
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -63,14 +63,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	camera.rotation.x = clamp(camera.rotation.x, -PI/2, PI/2)
 
 	if Input.is_action_just_pressed("shoot") \
-			and anim_player.current_animation != "shoot" :
+			and anim_player.current_animation != "shoot":
 		play_shoot_effects.rpc()
 		gunshot_sound.play()
-		if raycast.is_colliding() && str(raycast.get_collider()).contains("CharacterBody3D") :
+		if raycast.is_colliding() and str(raycast.get_collider()).contains("CharacterBody3D"):
 			var hit_player: Object = raycast.get_collider()
 			hit_player.recieve_damage.rpc_id(hit_player.get_multiplayer_authority())
 
-	if Input.is_action_just_pressed("respawn"):
+	if Input.is_action_just_pressed("respawn") and not duel_mode:
 		recieve_damage(5)
 
 	if Input.is_action_just_pressed("capture"):
@@ -84,16 +84,13 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	if multiplayer.multiplayer_peer != null:
 		if not is_multiplayer_authority(): return
-	# Add the gravity.
+
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 
-	# Handle jump.
 	if Input.is_action_just_pressed("ui_accept") and is_on_floor():
 		velocity.y = JUMP_VELOCITY
 
-	# Get the input direction and handle the movement/deceleration.
-	# As good practice, you should replace UI actions with custom gameplay actions.
 	var input_dir := Input.get_vector("left", "right", "up", "down")
 	var direction := (transform.basis * Vector3(input_dir.x, 0, input_dir.y))
 	if direction:
@@ -105,7 +102,7 @@ func _physics_process(delta: float) -> void:
 
 	if anim_player.current_animation == "shoot":
 		pass
-	elif input_dir != Vector2.ZERO and is_on_floor() :
+	elif input_dir != Vector2.ZERO and is_on_floor():
 		anim_player.play("move")
 	else:
 		anim_player.play("idle")
@@ -120,35 +117,49 @@ func play_shoot_effects() -> void:
 	muzzle_flash.emitting = true
 
 @rpc("any_peer", "call_local")
-func recieve_damage(damage:= 1) -> void:
+func recieve_damage(damage: int = 1) -> void:
+	if not is_multiplayer_authority(): return
 	health -= damage
 	if health <= 0:
-		health = 5
-		position = spawns[randi() % spawns.size()]
+		if duel_mode:
+			# En modo duelo: notificar al servidor que este peer perdió
+			_notify_duel_lost.rpc_id(1)
+		else:
+			health = 5
+			position = spawns[randi() % spawns.size()]
 
-	
+@rpc("any_peer", "reliable")
+func _notify_duel_lost() -> void:
+	if not multiplayer.is_server(): return  # ← correcto
+	var loser_peer = multiplayer.get_remote_sender_id()
+	CaptureManager.resolve_duel(loser_peer)
+
+
+func activate_duel_mode() -> void:
+	duel_mode = true
+	health = 5
+	position = spawns[randi() % spawns.size()]
+
+func deactivate_duel_mode() -> void:
+	duel_mode = false
+	health = 5
+
 func _on_animation_player_animation_finished(anim_name: StringName) -> void:
 	if anim_name == "shoot":
 		anim_player.play("idle")
-		
-func actualizar_color(color_id):
+
+func actualizar_color(color_id: int) -> void:
 	ficha_roja.visible = false
 	ficha_verde.visible = false
 	ficha_amarilla.visible = false
 	ficha_azul.visible = false
-
 	match color_id:
-		0:
-			ficha_amarilla.visible = true
-		1:
-			ficha_azul.visible = true
-		2:
-			ficha_roja.visible = true
-		3:
-			ficha_verde.visible = true
-
+		0: ficha_amarilla.visible = true
+		1: ficha_azul.visible = true
+		2: ficha_roja.visible = true
+		3: ficha_verde.visible = true
 
 @rpc("any_peer", "call_local", "reliable")
-func set_color(new_color:int):
+func set_color(new_color: int) -> void:
 	color_id = new_color
 	actualizar_color(color_id)

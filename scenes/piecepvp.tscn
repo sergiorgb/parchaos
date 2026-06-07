@@ -165,6 +165,9 @@ properties/2/replication_mode = 1
 [node name="player" type="CharacterBody3D" unique_id=219860811]
 collision_layer = 2
 script = ExtResource("1_7313g")
+color_id = null
+health = null
+spawns = null
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1976050314]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
@@ -178,7 +181,7 @@ shape = SubResource("CapsuleShape3D_kk8xf")
 [node name="Camera3D" type="Camera3D" parent="." unique_id=6970429]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5767993, -0.044653535)
 
-[node name="pistol" parent="Camera3D" unique_id=1175223380 instance=ExtResource("2_h2idh")]
+[node name="pistol" parent="Camera3D" unique_id=683892876 instance=ExtResource("2_h2idh")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, -0.25, -0.5)
 
 [node name="GunshotSound" type="AudioStreamPlayer3D" parent="Camera3D/pistol" unique_id=1732646580]

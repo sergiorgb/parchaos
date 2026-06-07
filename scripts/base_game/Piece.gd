@@ -75,6 +75,7 @@ func _move(steps) -> bool:
 		await _animate_hop_to(square.global_position)
 		if steps > 1:
 			return await _move_in_home_path(steps - 1)
+		broadcast_state()
 		return true
 	
 	var steps_to_entry = _steps_to_entry(current_position)
@@ -93,7 +94,7 @@ func _move(steps) -> bool:
 			home_route = 0
 			var square = board.home_paths[color][0]
 			await _animate_hop_to(square.global_position)
-		
+		broadcast_state()
 		return true
 	
 	elif steps > steps_to_entry:
@@ -114,6 +115,7 @@ func _move(steps) -> bool:
 			var remaining = steps - steps_to_entry - 1
 			if remaining > 0:
 				return await _move_in_home_path(remaining)
+				broadcast_state()
 			return true
 		else:
 			status_message_requested.emit("¡Debes completar el circuito primero!")
@@ -127,7 +129,7 @@ func _move(steps) -> bool:
 				current_position = (route + start_index) % board.main_path.size()
 				var square = board.main_path[current_position]
 				await _animate_hop_to(square.global_position)
-		
+		broadcast_state()
 		return true
 	
 	for i in range(steps):
@@ -137,7 +139,7 @@ func _move(steps) -> bool:
 		await _animate_hop_to(square.global_position)
 		if not has_completed_lap and route == lap_size:
 			has_completed_lap = true
-	
+	broadcast_state()
 	return true
 
 func _can_enter_home_path() -> bool:
@@ -157,10 +159,12 @@ func _move_in_home_path(steps: int) -> bool:
 	
 	if home_route == max_home_index:
 		_finish()
-	
+	broadcast_state()
 	return true
 
 func _animate_hop_to(target_pos: Vector3) -> void:
+	if multiplayer.is_server() and multiplayer.multiplayer_peer != null:
+		sync_animate_to.rpc(target_pos)
 	var current_pos = global_position
 	
 	var final_pos = target_pos
@@ -183,6 +187,8 @@ func _animate_hop_to(target_pos: Vector3) -> void:
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	
 	await tween.finished
+	if multiplayer.is_server():
+		sync_position.rpc(global_position)
 	remove_meta("current_tween")
 
 func _steps_to_entry(old_pos: int):
@@ -270,6 +276,7 @@ func _go_to_jail():
 	update_visual_effect()
 	var spot = board.jail[color][piece_id]
 	global_position = spot.global_position
+	broadcast_state()
 
 func _leave_jail():
 	in_jail = false
@@ -279,6 +286,7 @@ func _leave_jail():
 	var start_square = board.main_path[start_index]
 	await _animate_hop_to(start_square.global_position)
 	jail_exited.emit(self)
+	broadcast_state()
 
 func _move_backward(steps: int):
 	if in_home_path:
@@ -344,3 +352,35 @@ func _adjust_visual_position(is_barrier: bool, piece_index_in_cell: int, cell_in
 	var tween = create_tween()
 	tween.tween_property(self, "global_position", target_pos, 0.2)\
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	
+	if multiplayer.is_server() and multiplayer.multiplayer_peer != null:
+		sync_animate_to.rpc(target_pos)  # anima suave en el cliente
+
+@rpc("authority", "call_local", "reliable")
+func sync_state(p_route: int, p_current_position: int, p_in_jail: bool, 
+				p_in_home_path: bool, p_home_route: int, p_is_finished: bool,
+				p_has_completed_lap: bool, p_lap_size: int) -> void:
+	route = p_route
+	current_position = p_current_position
+	in_jail = p_in_jail
+	in_home_path = p_in_home_path
+	home_route = p_home_route
+	is_finished = p_is_finished
+	has_completed_lap = p_has_completed_lap
+	lap_size = p_lap_size
+
+@rpc("authority", "call_local", "reliable")
+func sync_position(pos: Vector3) -> void:
+	global_position = pos
+
+@rpc("authority", "reliable")
+func sync_animate_to(target_pos: Vector3) -> void:
+	if multiplayer.is_server():
+		return
+	await _animate_hop_to(target_pos)
+
+func broadcast_state() -> void:
+	if not multiplayer.is_server():
+		return
+	sync_state.rpc(route, current_position, in_jail, in_home_path, 
+				   home_route, is_finished, has_completed_lap, lap_size)
