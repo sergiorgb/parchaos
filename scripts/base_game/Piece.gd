@@ -28,6 +28,8 @@ var is_shielded: bool = false
 var shield_turns: int = 0
 var is_frozen: bool = false
 var frozen_turns: int = 0
+var is_ghost: bool = false
+var ghost_turns: int = 0
 
 func _ready():
 	$Visual/yellow.visible = false
@@ -204,65 +206,73 @@ func _finish():
 func tick_status_effects() -> void:
 	if is_shielded:
 		shield_turns -= 1
-		if shield_turns <= 0: 
+		if shield_turns <= 0:
 			is_shielded = false
-	
 	if is_frozen:
 		frozen_turns -= 1
-		if frozen_turns <= 0: 
+		if frozen_turns <= 0:
 			is_frozen = false
-	
+	if is_ghost:
+		ghost_turns -= 1
+		if ghost_turns <= 0:
+			is_ghost = false
 	update_visual_effect()
+	broadcast_visual_effect()
 
 func apply_shield(turns: int) -> void:
 	is_shielded = true
 	shield_turns = turns
 	update_visual_effect()
+	broadcast_visual_effect()  # ← AGREGAR
 
 func apply_freeze(turns: int) -> void:
 	is_frozen = true
 	frozen_turns = turns
 	update_visual_effect()
+	broadcast_visual_effect()  # ← AGREGAR
+
+func apply_ghost(turns: int) -> void:
+	is_ghost = true
+	ghost_turns = turns
+	update_visual_effect()
+	broadcast_visual_effect()  # ← AGREGAR
 
 func update_visual_effect() -> void:
 	for child in get_children():
 		if child.name == "StatusEffect":
 			child.free()
-	
-	if not is_frozen and not is_shielded:
+	if not is_frozen and not is_shielded and not is_ghost:
 		return
-	
 	var effect = MeshInstance3D.new()
 	effect.name = "StatusEffect"
-	
 	var mesh: Mesh
 	if is_frozen:
 		mesh = BoxMesh.new()
 		mesh.size = Vector3(0.10, 0.18, 0.10)
-
+	elif is_ghost:
+		mesh = CapsuleMesh.new()
+		mesh.radius = 0.20
+		mesh.height = 0.18
 	else:
 		mesh = CapsuleMesh.new()
 		mesh.radius = 0.25
 		mesh.height = 0.15
-	
-	
 	effect.mesh = mesh
-	
 	var mat = StandardMaterial3D.new()
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mat.render_priority = 1 
-	
+	mat.render_priority = 1
 	if is_frozen:
 		mat.albedo_color = Color(0.4, 0.7, 1.0, 0.6)
 		mat.emission = Color(0.2, 0.5, 1.0)
+	elif is_ghost:
+		mat.albedo_color = Color(0.6, 0.3, 0.9, 0.4)
+		mat.emission = Color(0.5, 0.2, 0.8)
 	else:
 		mat.albedo_color = Color(1.0, 0.902, 0.302, 0.451)
 		mat.emission = Color(1.0, 0.8, 0.2)
-	
 	mat.emission_energy_multiplier = 1.0
 	effect.material_override = mat
-	
 	add_child(effect)
 	effect.position = Vector3(0, 0.05, 0)
 
@@ -270,13 +280,17 @@ func _go_to_jail():
 	in_jail = true
 	is_shielded = false
 	is_frozen = false
+	is_ghost = false
 	shield_turns = 0
 	frozen_turns = 0
+	ghost_turns = 0
 	has_completed_lap = false
 	update_visual_effect()
 	var spot = board.jail[color][piece_id]
 	global_position = spot.global_position
 	broadcast_state()
+	if multiplayer.is_server():
+		sync_position.rpc(global_position)
 
 func _leave_jail():
 	in_jail = false
@@ -357,9 +371,10 @@ func _adjust_visual_position(is_barrier: bool, piece_index_in_cell: int, cell_in
 		sync_animate_to.rpc(target_pos)  # anima suave en el cliente
 
 @rpc("authority", "call_local", "reliable")
-func sync_state(p_route: int, p_current_position: int, p_in_jail: bool, 
+func sync_state(p_route: int, p_current_position: int, p_in_jail: bool,
 				p_in_home_path: bool, p_home_route: int, p_is_finished: bool,
-				p_has_completed_lap: bool, p_lap_size: int) -> void:
+				p_has_completed_lap: bool, p_lap_size: int,
+				p_is_ghost: bool = false, p_ghost_turns: int = 0) -> void:
 	route = p_route
 	current_position = p_current_position
 	in_jail = p_in_jail
@@ -368,6 +383,8 @@ func sync_state(p_route: int, p_current_position: int, p_in_jail: bool,
 	is_finished = p_is_finished
 	has_completed_lap = p_has_completed_lap
 	lap_size = p_lap_size
+	is_ghost = p_is_ghost
+	ghost_turns = p_ghost_turns
 
 @rpc("authority", "call_local", "reliable")
 func sync_position(pos: Vector3) -> void:
@@ -379,8 +396,24 @@ func sync_animate_to(target_pos: Vector3) -> void:
 		return
 	await _animate_hop_to(target_pos)
 
+@rpc("authority", "reliable")
+func sync_visual_effect(is_shielded_val: bool, shield_turns_val: int, is_frozen_val: bool, frozen_turns_val: int, is_ghost_val: bool, ghost_turns_val: int) -> void:
+	is_shielded = is_shielded_val
+	shield_turns = shield_turns_val
+	is_frozen = is_frozen_val
+	frozen_turns = frozen_turns_val
+	is_ghost = is_ghost_val
+	ghost_turns = ghost_turns_val
+	update_visual_effect()
+
+func broadcast_visual_effect() -> void:
+	if not multiplayer.is_server():
+		return
+	sync_visual_effect.rpc(is_shielded, shield_turns, is_frozen, frozen_turns, is_ghost, ghost_turns)
+
 func broadcast_state() -> void:
 	if not multiplayer.is_server():
 		return
-	sync_state.rpc(route, current_position, in_jail, in_home_path, 
-				   home_route, is_finished, has_completed_lap, lap_size)
+	sync_state.rpc(route, current_position, in_jail, in_home_path,
+				   home_route, is_finished, has_completed_lap, lap_size,
+				   is_ghost, ghost_turns)

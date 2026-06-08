@@ -20,8 +20,9 @@ func on_piece_hovered(piece: GamePiece):
 		return
 	if piece.player != turn_manager.players[turn_manager.current_player_index]:
 		return
-	
+	print(turn_manager.current_roll)
 	var steps = turn_manager.get_current_steps()
+	print("state:", turn_manager.current_state, " steps:", steps, " roll:", turn_manager.current_roll)
 	if steps == 0:
 		return
 	

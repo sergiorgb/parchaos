@@ -24,7 +24,7 @@ var enemy_scene: PackedScene = preload("res://scenes/enemy.tscn")
 
 const PORT = 9999
 var enet_peer: ENetMultiplayerPeer = ENetMultiplayerPeer.new()
-
+var ia_colors_snapshot: Array = []
 var player_buttons: Array = ["HUMANO", "HUMANO", "HUMANO", "HUMANO"]
 var difficulty_options: Array = [1, 1, 1, 1]
 var ia_colors: Array = []
@@ -37,6 +37,7 @@ func _ready() -> void:
 	blue_option.visible = false
 	red_option.visible = false
 	green_option.visible = false
+	$EnemySpawner.spawned.connect(_on_enemy_spawned)
 
 func _on_yellow_button_pressed() -> void:
 	if yellow_button.text == "HUMANO":
@@ -114,13 +115,14 @@ func _on_play_button_pressed() -> void:
 			ia_colors.append(i)
 			counter_ia += 1
 
-	print("counter_human: ", counter_human, " human_colors: ", human_colors)
+	print("ia_colors:", ia_colors, " human_colors:", human_colors, " counter_ia:", counter_ia, " counter_human:", counter_human)
 
-	if counter_human <= 1:
+	# CASO 1: Solo IAs (0 humanos)
+	if counter_human == 0:
 		get_tree().change_scene_to_file("res://scenes/main.tscn")
 		return
 
-	# Ocultar UI
+	# CASO 2: Al menos 1 humano
 	_hide_ui()
 
 	# Crear servidor
@@ -133,12 +135,16 @@ func _on_play_button_pressed() -> void:
 	add_player(multiplayer.get_unique_id())
 	upnp_setup()
 
-	# Spawnear IAs si hay
+	# Spawnear IAs
 	if counter_ia > 0:
-		var ia_colors_snapshot = ia_colors.duplicate()
+		ia_colors_snapshot = ia_colors.duplicate()
 		spawn_enemies()
-		sync_enemies.rpc(ia_colors_snapshot)
 
+	# CASO 2a: Solo el host (1 humano, sin clientes)
+	if counter_human == 1:
+		await get_tree().create_timer(0.5).timeout
+		iniciar_cambio_escena_rpc.rpc()
+	
 func _on_join_button_pressed() -> void:
 	print("Join presionado, IP: ", address_entry.text)
 	_hide_ui()
@@ -156,10 +162,25 @@ func _hide_ui() -> void:
 	host_menu.hide()
 
 func _on_peer_connected(peer_id: int) -> void:
-	print("Peer conectado: ", peer_id)
+	print("_on_peer_connected llamado, peer:", peer_id, " total_peers:", multiplayer.get_peers().size())
 	add_player(peer_id)
+	
+	# Sincronizar colores de humanos ya conectados
+	for node in get_children():
+		if node.name.is_valid_int() and node.has_method("set_color"):
+			var existing_peer_id = int(node.name)
+			var color = -1
+			for i in range(GameConfig.player_config.size()):
+				if GameConfig.player_config[i]["peer_id"] == existing_peer_id:
+					color = i
+					break
+			if color != -1:
+				node.set_color.rpc_id(peer_id, color)
+	
 	var total_conectados = multiplayer.get_peers().size() + 1
-	print("Total: ", total_conectados, " necesarios: ", counter_human)
+	print("total_conectados:", total_conectados, " counter_human:", counter_human)
+	
+	# Solo cambiar escena cuando todos los humanos estén conectados
 	if total_conectados >= counter_human:
 		await get_tree().create_timer(0.6).timeout
 		iniciar_cambio_escena_rpc.rpc()
@@ -173,7 +194,10 @@ func add_player(peer_id: int) -> void:
 	GameConfig.player_config[assigned_color]["peer_id"] = peer_id
 	GameConfig.player_config[assigned_color]["is_ai"] = false
 	print("HOST asignó color:", assigned_color)
-	if peer_id != multiplayer.get_unique_id():
+	
+	if peer_id == multiplayer.get_unique_id():
+		GameConfig.my_color = assigned_color
+	else:
 		await get_tree().create_timer(0.5).timeout
 		GameConfig.set_my_color.rpc_id(peer_id, assigned_color)
 
@@ -197,21 +221,27 @@ func spawn_enemies() -> void:
 		var assigned_color = ia_colors.pop_front()
 		var enemy_instance = enemy_scene.instantiate()
 		enemy_instance.name = "Enemy_" + str(i)
+		enemy_instance.color_id = assigned_color  # ← asignar antes de add_child
 		enemy_instance.position = enemy_spawns[randi() % enemy_spawns.size()]
 		add_child(enemy_instance)
-		enemy_instance.set_color.rpc(assigned_color)
-
-@rpc("authority", "call_local", "reliable")
-func sync_enemies(colors: Array) -> void:
-	if multiplayer.is_server():
-		return
-	for i in range(colors.size()):
-		var enemy_instance = enemy_scene.instantiate()
-		enemy_instance.name = "Enemy_" + str(i)
-		enemy_instance.position = enemy_spawns[randi() % enemy_spawns.size()]
-		add_child(enemy_instance)
-		enemy_instance.set_color.rpc_id(multiplayer.get_unique_id(), colors[i])
 
 @rpc("authority", "call_local", "reliable")
 func iniciar_cambio_escena_rpc() -> void:
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
+
+func _on_enemy_spawned(node: Node) -> void:
+	if not multiplayer.is_server():
+		# El cliente pide el color al servidor
+		var enemy_index = int(node.name.replace("Enemy_", ""))
+		request_enemy_color.rpc_id(1, enemy_index)
+
+@rpc("any_peer", "reliable")
+func request_enemy_color(enemy_index: int) -> void:
+	if not multiplayer.is_server():
+		return
+	if enemy_index < ia_colors_snapshot.size():
+		var color = ia_colors_snapshot[enemy_index]
+		var sender = multiplayer.get_remote_sender_id()
+		var enemy = get_node_or_null("Enemy_" + str(enemy_index))
+		if enemy:
+			enemy.set_color.rpc_id(sender, color)

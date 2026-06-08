@@ -28,6 +28,15 @@ volumetric_fog_albedo = Color(0.5372549, 0.7058824, 0.83137256, 1)
 volumetric_fog_emission = Color(0.5372549, 0.7058824, 0.83137256, 1)
 volumetric_fog_emission_energy = 0.3
 
+[sub_resource type="LabelSettings" id="LabelSettings_sugp2"]
+font_color = Color(0.00039445335, 0.00039445335, 0.00039445335, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_0wfyh"]
+font_color = Color(0, 0, 0, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_jyhfs"]
+font_color = Color(0, 0, 0, 1)
+
 [sub_resource type="BoxShape3D" id="BoxShape3D_sugp2"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0wfyh"]
@@ -67,41 +76,29 @@ self_modulate = Color(0, 0, 0, 1)
 layout_mode = 0
 offset_right = 40.0
 offset_bottom = 23.0
+label_settings = SubResource("LabelSettings_sugp2")
 
 [node name="HandContainer" type="Control" parent="UI/GameUI" unique_id=739357829]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
+[node name="EventLabel" type="Label" parent="UI/GameUI" unique_id=1836889895]
+layout_mode = 0
+offset_left = 600.0
+offset_right = 640.0
+offset_bottom = 23.0
+label_settings = SubResource("LabelSettings_0wfyh")
+
+[node name="EventCounterLabel" type="Label" parent="UI/GameUI" unique_id=554605361]
+layout_mode = 0
+offset_left = 600.0
+offset_top = -25.0
+offset_right = 640.0
+offset_bottom = -2.0
+label_settings = SubResource("LabelSettings_jyhfs")
+
 [node name="Board" parent="." unique_id=1352643309 instance=ExtResource("6_tefeu")]
-
-[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=512031805]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 1.5, -2)
-light_color = Color(0.69799274, 0.69799274, 0.69799274, 1)
-light_energy = 0.75
-shadow_enabled = true
-distance_fade_enabled = true
-
-[node name="OmniLight3D2" type="OmniLight3D" parent="." unique_id=230955666]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 1.5, 2)
-light_color = Color(0.69799274, 0.69799274, 0.69799274, 1)
-light_energy = 0.75
-shadow_enabled = true
-distance_fade_enabled = true
-
-[node name="OmniLight3D3" type="OmniLight3D" parent="." unique_id=857622024]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.5, 2)
-light_color = Color(0.69799274, 0.69799274, 0.69799274, 1)
-light_energy = 0.75
-shadow_enabled = true
-distance_fade_enabled = true
-
-[node name="OmniLight3D4" type="OmniLight3D" parent="." unique_id=1945516112]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 1.5, -2)
-light_color = Color(0.69799274, 0.69799274, 0.69799274, 1)
-light_energy = 0.75
-shadow_enabled = true
-distance_fade_enabled = true
 
 [node name="yellow" type="Marker3D" parent="." unique_id=222582635]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3, 0.8, 1.3)

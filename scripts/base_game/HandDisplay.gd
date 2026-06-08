@@ -9,7 +9,10 @@ const CARD_TEXTURES = {
 	3:  preload("res://resources/cards/Sabotaje.png"),
 	4:  preload("res://resources/cards/Hielo.png"),
 	5:  preload("res://resources/cards/Doble.png"),
-	6:  preload("res://resources/cards/Ladron.png")
+	6:  preload("res://resources/cards/Ladron.png"),
+	7:  preload("res://resources/cards/Mina.png"),
+	8:  preload("res://resources/cards/Fantasma.png"),
+	9:  preload("res://resources/cards/Alianza.png")
 }
 
 const CARD_SIZE = Vector2(180, 260)

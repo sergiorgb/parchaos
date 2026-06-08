@@ -19,6 +19,8 @@ config/icon="res://icon.svg"
 
 GameConfig="*uid://bo004wc7bc2mx"
 CaptureManager="*uid://bnkixhnl23kg1"
+PathFindingManager="*uid://ty6s4ahb5i6l"
+GraphData="*uid://bg68t74usbyoi"
 
 [display]
 

@@ -2778,7 +2778,6 @@ shape = SubResource("BoxShape3D_tv0ha")
 
 [node name="Tronco" type="MeshInstance3D" parent="." unique_id=144566635]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.03916073, -9.536743e-07, -1.9638066)
-visible = false
 material_override = SubResource("StandardMaterial3D_ypcmj")
 mesh = ExtResource("2_ggieq")
 
@@ -2789,7 +2788,6 @@ shape = SubResource("ConcavePolygonShape3D_ypcmj")
 
 [node name="Tronco2" type="MeshInstance3D" parent="." unique_id=663224616]
 transform = Transform3D(0.81484705, 0, 0, 0, 0.8599626, 0, 0, 0, 1.0220406, 47.13457, -9.536743e-07, 16.380875)
-visible = false
 material_override = SubResource("StandardMaterial3D_ypcmj")
 mesh = ExtResource("2_ggieq")
 
@@ -2801,7 +2799,6 @@ shape = SubResource("ConcavePolygonShape3D_ggieq")
 
 [node name="Tronco3" type="MeshInstance3D" parent="." unique_id=1429585552]
 transform = Transform3D(-0.43943676, 0, -0.031153036, 0, 0.51037705, 0, 0.03469243, 0, -0.39460388, 4.1418324, -9.536743e-07, -24.009893)
-visible = false
 material_override = SubResource("StandardMaterial3D_ypcmj")
 mesh = ExtResource("2_ggieq")
 
@@ -2812,7 +2809,6 @@ shape = SubResource("ConcavePolygonShape3D_h8s6j")
 
 [node name="Tronco4" type="MeshInstance3D" parent="." unique_id=15969380]
 transform = Transform3D(0.1424954, 0, -0.34334335, 0, 0.3267414, 0, 0.3700739, 0, 0.13220306, -15.676085, -9.536743e-07, -14.662301)
-visible = false
 material_override = SubResource("StandardMaterial3D_ypcmj")
 mesh = ExtResource("2_ggieq")
 
@@ -5810,7 +5806,6 @@ transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 37.7621, 1.2312233, -35.07358
 transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 37.76211, 1.2312233, -38.65661)
 
 [node name="boxes" type="Node3D" parent="." unique_id=1502884989]
-visible = false
 
 [node name="FirstBox" type="Node3D" parent="boxes" unique_id=737621653]
 
@@ -5981,7 +5976,6 @@ transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 23.811548, 0.9752128, 21.0328
 transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 23.96425, 1.2312232, 23.795801)
 
 [node name="walls" type="Node3D" parent="." unique_id=982822465]
-visible = false
 
 [node name="FirstWall" type="Node3D" parent="walls" unique_id=1185209481]
 
@@ -6234,3 +6228,14 @@ transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 20.710903, 1.2312232, 21.0328
 
 [node name="Marker3D1154" type="Marker3D" parent="walls/Eighteenth" unique_id=1142259607]
 transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 23.45977, 1.2312232, 21.032856)
+
+[node name="SpectatorCamera" type="Camera3D" parent="." unique_id=773493331]
+transform = Transform3D(2.2222223, 0, 0, 0, -9.713643e-08, 2.2222223, 0, -2.2222223, -9.713643e-08, 0, 53.11209, 1.947081)
+
+[node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="." unique_id=342239816]
+_spawnable_scenes = PackedStringArray("uid://b2qhxdrnviyqf")
+spawn_path = NodePath("..")
+
+[node name="MultiplayerSpawner2" type="MultiplayerSpawner" parent="." unique_id=788581911]
+_spawnable_scenes = PackedStringArray("uid://duyng6ujwgb2c")
+spawn_path = NodePath("..")
