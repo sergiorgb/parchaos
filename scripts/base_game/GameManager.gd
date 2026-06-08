@@ -959,6 +959,10 @@ func _on_piece_finished_signal(_piece_ref):
  
 func _on_bonus_move(steps: int):
 	status_label.text = "¡Bonus de " + str(steps) + "! Mueve una ficha"
+	var current_player = turn_manager.current_player_index
+	if players[current_player].is_ai:
+		await get_tree().create_timer(0.75).timeout
+		_do_ai_pick_piece()
  
 func _on_break_barrier_requested():
 	status_label.text = "Rompe la barrera: selecciona una ficha de la barrera para mover 1 paso"

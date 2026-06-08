@@ -95,8 +95,6 @@ func break_barrier(piece: GamePiece, steps: int):
 	_check_stacking(current_pos)
 	_check_capture(piece)
 	check_mine(piece)
-	if event_manager:
-		await event_manager.check_wormhole(piece)
 	_check_stacking(piece.current_position)
 
 	if piece.current_position == piece.player.home_entry:

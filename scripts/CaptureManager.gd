@@ -87,6 +87,9 @@ func _launch_duel_rpc(attacker_peer: int, defender_peer: int) -> void:
 		game_manager._broadcast_state()
 		game_manager.duel_in_progress = true
 		game_manager.get_parent().visible = false
+		var game_ui = game_manager.get_node_or_null("../UI/GameUI")
+		if game_ui:
+			game_ui.visible = false
 		game_manager.dice_manager.clear_for_turn_end()
 		game_manager.turn_manager.set_process(false)
 		if game_manager.event_manager:
@@ -117,6 +120,9 @@ func _finish_duel_rpc(attacker_won: bool) -> void:
 		game_manager.release_mouse_after_duel()
 		game_manager.duel_in_progress = false
 		game_manager.get_parent().visible = true
+		var game_ui = game_manager.get_node_or_null("../UI/GameUI")
+		if game_ui:
+			game_ui.visible = true
 		game_manager.turn_manager.set_process(true)  # ← antes de _apply_result
 		if game_manager.event_manager:
 			game_manager.event_manager.set_process(true)
